@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lose Crew Casino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #8B5CF6;
+  --primary-dark: #7C3AED;
+  --secondary: #EC4899;
+  --accent: #F59E0B;
+  --accent-light: #FCD34D;
+  --success: #10B981;
+  --danger: #EF4444;
+  --bg-primary: #0F0F23;
+  --bg-secondary: #1A1A3A;
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-card-hover: rgba(255, 255, 255, 0.08);
+  --text-primary: #FFFFFF;
+  --text-secondary: #A1A1AA;
+  --border: rgba(255, 255, 255, 0.1);
+  --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  --glow: 0 0 40px rgba(139, 92, 246, 0.3);
+  --border-radius: 24px;
+  --border-radius-sm: 16px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(135deg, #0F0F23 0%, #1A1A3A 50%, #0F0F23 100%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
+              radial-gradient(circle at 40% 40%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+header {
+  padding: 2rem 0;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+}
+
+.logo {
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 40px rgba(139, 92, 246, 0.5);
+  animation: glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.3)); }
+  to { filter: drop-shadow(0 0 40px rgba(139, 92, 246, 0.6)); }
+}
+
+.tagline {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  font-weight: 300;
+}
+
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  box-shadow: var(--shadow);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-lg), var(--glow);
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.auth-section {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.input-field {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto 1rem;
+  display: block;
+  padding: 1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), var(--glow);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.input-field::placeholder {
+  color: var(--text-secondary);
+}
+
+.btn {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  box-shadow: 0 10px 20px rgba(139, 92, 246, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 30px rgba(139, 92, 246, 0.4);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, var(--secondary) 0%, #BE185D 100%);
+  color: white;
+  box-shadow: 0 10px 20px rgba(236, 72, 153, 0.3);
+}
+
+.btn-secondary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 30px rgba(236, 72, 153, 0.4);
+}
+
+.btn:disabled {
+  background: #374151;
+  color: #6B7280;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.auth-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.credits-display {
+  text-align: center;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--border-radius-sm);
+  backdrop-filter: blur(10px);
+}
+
+.credits-label {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.credits-amount {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.game-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  cursor: pointer;
+}
+
+.game-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.game-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: var(--shadow-lg);
+}
+
+.game-card:hover::before {
+  opacity: 1;
+}
+
+.game-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.game-card:hover .game-image {
+  transform: scale(1.05);
+}
+
+.game-content {
+  padding: 1.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+.game-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.game-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.game-btn {
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: var(--border-radius-sm);
+}
+
+.game-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.game-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.game-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  max-width: 90vw;
+  max-height: 90vh;
+  width: 800px;
+  padding: 2rem;
+  position: relative;
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-lg);
+  transform: scale(0.9) translateY(50px);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+}
+
+.game-overlay.active .game-modal {
+  transform: scale(1) translateY(0);
+}
+
+.game-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.game-close:hover {
+  background: var(--danger);
+  transform: scale(1.1);
+}
+
+.bet-selection {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.bet-label {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.bet-slider {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto 1rem;
+  appearance: none;
+  height: 8px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  border-radius: 5px;
+  outline: none;
+}
+
+.bet-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.bet-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.bet-display {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 1rem 0;
+}
+
+.game-area {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.game-coin {
+  font-size: 6rem;
+  display: inline-block;
+  margin: 2rem 0;
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+  transition: all 1s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes flip {
+  0% { transform: rotateY(0deg) scale(1); }
+  50% { transform: rotateY(360deg) scale(1.2); }
+  100% { transform: rotateY(720deg) scale(1); }
+}
+
+.slots-container {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.slots-reels {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.slot-reel {
+  width: 120px;
+  height: 160px;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  border: 3px solid var(--primary);
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+}
+
+.dice-container {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.dice-pair {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+.dice {
+  width: 80px;
+  height: 80px;
+  background: var(--text-primary);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--bg-primary);
+  box-shadow: var(--shadow);
+  transition: transform 0.5s ease;
+}
+
+.dice.rolling {
+  animation: diceRoll 1s ease-in-out;
+}
+
+@keyframes diceRoll {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(90deg) scale(1.1); }
+  50% { transform: rotate(180deg) scale(1.2); }
+  75% { transform: rotate(270deg) scale(1.1); }
+}
+
+.betting-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.bet-option {
+  padding: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.bet-option:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--primary);
+}
+
+.bet-option.selected {
+  background: var(--primary);
+  border-color: var(--primary-dark);
+  color: white;
+}
+
+.scratch-container {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.scratch-card {
+  width: 300px;
+  height: 200px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  border-radius: var(--border-radius-sm);
+  margin: 2rem auto;
+  position: relative;
+  cursor: crosshair;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--bg-primary);
+}
+
+.scratch-surface {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--bg-primary);
+  transition: opacity 0.3s ease;
+  border-radius: var(--border-radius-sm);
+}
+
+.game-result {
+  margin-top: 2rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 1rem 2rem;
+  border-radius: var(--border-radius-sm);
+  backdrop-filter: blur(10px);
+}
+
+.game-result.win {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--success);
+}
+
+.game-result.lose {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--danger);
+}
+
+.message {
+  text-align: center;
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: var(--border-radius-sm);
+  font-weight: 500;
+}
+
+.message.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--danger);
+}
+
+.message.success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--success);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.mt-2 { margin-top: 2rem; }
+.mb-2 { margin-bottom: 2rem; }
+
+.btn.loading {
+  position: relative;
+  color: transparent;
+}
+
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+  
+  .card {
+    padding: 1.5rem;
+  }
+  
+  .auth-buttons {
+    flex-direction: column;
+  }
+  
+  .game-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .game-coin {
+    font-size: 4rem;
+  }
+  
+  .game-modal {
+    width: 95vw;
+    padding: 1rem;
+  }
+  
+  .slots-reels {
+    gap: 0.5rem;
+  }
+  
+  .slot-reel {
+    width: 80px;
+    height: 120px;
+    font-size: 2rem;
+  }
+  
+  .dice-pair {
+    gap: 1rem;
+  }
+  
+  .dice {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+  
+  .betting-options {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1 class="logo">🎰 Lose Crew Casino</h1>
+    <p class="tagline">Where Fortune Favors the Bold</p>
+  </div>
+</header>
+
+<main class="container">
+  <!-- Auth Section -->
+  <section id="auth-section" class="auth-section">
+    <div class="card">
+      <h2 class="card-title">Enter the Casino</h2>
+      <div class="form-group">
+        <input type="text" id="username" class="input-field" placeholder="Username" maxlength="50">
+        <input type="password" id="password" class="input-field" placeholder="Password" maxlength="50">
+      </div>
+      <div class="auth-buttons">
+        <button id="login-btn" class="btn btn-primary">Login</button>
+        <button id="signup-btn" class="btn btn-secondary">Sign Up</button>
+      </div>
+      <div id="auth-message" class="message hidden"></div>
+    </div>
+  </section>
+
+  <!-- Casino Section -->
+  <section id="casino-section" class="hidden">
+    <div class="card">
+      <h2 class="card-title">Welcome, <span id="user-display"></span>!</h2>
+      <button id="logout-btn" class="btn btn-secondary mb-2">Logout</button>
+      
+      <div class="credits-display">
+        <div class="credits-label">Your Credits</div>
+        <div class="credits-amount" id="credits-display">0</div>
+      </div>
+
+      <div id="casino-message" class="message hidden"></div>
+      <div class="game-grid" id="game-grid"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const API_URL = "https://lose-crew-backend.onrender.com"; // Ensure this matches your Render URL
+
+// DOM elements
+const loginSection = document.getElementById('auth-section');
+const casinoSection = document.getElementById('casino-section');
+const loginBtn = document.getElementById('login-btn');
+const signupBtn = document.getElementById('signup-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const authMsg = document.getElementById('auth-message');
+const casinoMsg = document.getElementById('casino-message');
+const userDisplay = document.getElementById('user-display');
+const creditsDisplay = document.getElementById('credits-display');
+const gameGrid = document.getElementById('game-grid');
+
+let currentUser = null;
+let credits = 0;
+let gameConfigs = {};
+
+// Game configurations with images
+const gameImages = {
+  coinflip: 'https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=300&h=200&fit=crop&auto=format',
+  slots: 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?w=300&h=200&fit=crop&auto=format',
+  dice: 'https://images.unsplash.com/photo-1551431009-a802eeec77b1?w=300&h=200&fit=crop&auto=format',
+  scratch: 'https://images.unsplash.com/photo-1606092195730-5d7b9af1efc5?w=300&h=200&fit=crop&auto=format'
+};
+
+const gameDescriptions = {
+  coinflip: 'Test your luck with a simple coin flip',
+  slots: 'Spin three reels for massive wins',
+  dice: 'Roll the dice and win big',
+  scratch: 'Scratch to reveal instant prizes'
+};
+
+// Load game configurations from backend
+async function loadGameConfigs() {
+  try {
+    console.log('Fetching game configs from:', `${API_URL}/games/config`);
+    const res = await fetch(`${API_URL}/games/config`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch game configs: ${res.status} ${res.statusText}`);
+    }
+    const data = await res.json();
+    console.log('Game configs received:', data);
+    gameConfigs = data;
+    renderGames();
+  } catch (err) {
+    console.error('Failed to load game configs:', err);
+    showMessage(casinoMsg, 'Unable to load games. Please try again later.', 'error');
+  }
+}
+
+function renderGames() {
+  gameGrid.innerHTML = '';
+  if (Object.keys(gameConfigs).length === 0) {
+    console.log('No game configs available');
+    gameGrid.innerHTML = '<p class="message error">No games available at the moment.</p>';
+    return;
+  }
+  
+  console.log('Rendering games:', Object.keys(gameConfigs));
+  for (const [gameType, config] of Object.entries(gameConfigs)) {
+    const div = document.createElement('div');
+    div.className = 'game-card';
+    
+    div.innerHTML = `
+      <img src="${gameImages[gameType]}" alt="${config.name}" class="game-image">
+      <div class="game-content">
+        <h4 class="game-title">${config.name}</h4>
+        <p class="game-subtitle">${gameDescriptions[gameType]}</p>
+        <p class="game-subtitle">Bet: ${config.minBet}-${config.maxBet} credits</p>
+        <button class="btn btn-primary game-btn">Play Now</button>
+      </div>
+    `;
+    
+    div.querySelector('.game-btn').onclick = () => openGame(gameType, config);
+    gameGrid.appendChild(div);
+  }
+}
+
+function openGame(gameType, config) {
+  const overlay = document.createElement('div');
+  overlay.className = 'game-overlay';
+  overlay.innerHTML = `
+    <div class="game-modal">
+      <button class="game-close">×</button>
+      <h2 class="card-title">${config.name}</h2>
+      <div id="game-content"></div>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  const closeBtn = overlay.querySelector('.game-close');
+  closeBtn.onclick = () => closeGameOverlay(overlay);
+  overlay.onclick = (e) => {
+    if (e.target === overlay) closeGameOverlay(overlay);
+  };
+  
+  const gameContent = overlay.querySelector('#game-content');
+  loadGameContent(gameType, config, gameContent);
+  
+  setTimeout(() => overlay.classList.add('active'), 50);
+}
+
+function closeGameOverlay(overlay) {
+  overlay.classList.remove('active');
+  setTimeout(() => {
+    if (overlay.parentNode) {
+      document.body.removeChild(overlay);
+    }
+  }, 400);
+}
+
+function createBetSelector(config, onBetChange) {
+  const betDiv = document.createElement('div');
+  betDiv.className = 'bet-selection';
+  
+  betDiv.innerHTML = `
+    <div class="bet-label">Choose Your Bet</div>
+    <input type="range" class="bet-slider" min="${config.minBet}" max="${config.maxBet}" value="${config.minBet}" id="bet-slider">
+    <div class="bet-display">${config.minBet} Credits</div>
+  `;
+  
+  const slider = betDiv.querySelector('#bet-slider');
+  const display = betDiv.querySelector('.bet-display');
+  
+  slider.oninput = () => {
+    const value = parseInt(slider.value);
+    display.textContent = `${value} Credits`;
+    if (onBetChange) onBetChange(value);
+  };
+  
+  return { element: betDiv, getValue: () => parseInt(slider.value) };
+}
+
+async function playGame(gameType, betAmount, gameOptions = {}) {
+  try {
+    console.log('Playing game:', { gameType, betAmount, gameOptions });
+    const res = await fetch(`${API_URL}/play`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: currentUser,
+        gameType,
+        betAmount,
+        gameOptions
+      })
+    });
+    
+    const data = await res.json();
+    console.log('Play result:', data);
+    
+    if (res.ok) {
+      credits = data.credits;
+      creditsDisplay.textContent = credits;
+      return data;
+    } else {
+      if (res.status === 429) {
+        throw new Error('Too many plays. Please wait a moment.');
+      }
+      throw new Error(data.error || 'Game error');
+    }
+  } catch (err) {
+    console.error('Play error:', err);
+    throw err;
+  }
+}
+
+function loadGameContent(gameType, config, container) {
+  switch (gameType) {
+    case 'coinflip':
+      loadCoinFlipGame(config, container);
+      break;
+    case 'slots':
+      loadSlotsGame(config, container);
+      break;
+    case 'dice':
+      loadDiceGame(config, container);
+      break;
+    case 'scratch':
+      loadScratchGame(config, container);
+      break;
+  }
+}
+
+function loadCoinFlipGame(config, container) {
+  const betSelector = createBetSelector(config);
+  
+  container.innerHTML = `
+    <div class="game-area">
+      <div class="game-coin">🪙</div>
+      <div id="coinflip-bet-container"></div>
+      <button id="flip-btn" class="btn btn-primary">Flip Coin</button>
+      <div id="flip-result" class="game-result"></div>
+    </div>
+  `;
+  
+  const betContainer = container.querySelector('#coinflip-bet-container');
+  betContainer.appendChild(betSelector.element);
+  
+  const flipBtn = container.querySelector('#flip-btn');
+  const coin = container.querySelector('.game-coin');
+  const result = container.querySelector('#flip-result');
+  
+  flipBtn.onclick = async () => {
+    const betAmount = betSelector.getValue();
+    
+    if (credits < betAmount) {
+      result.textContent = `Not enough credits! Need ${betAmount} credits.`;
+      result.className = 'game-result lose';
+      return;
+    }
+    
+    setButtonLoading(flipBtn, true);
+    
+    try {
+      coin.style.animation = 'flip 2s cubic-bezier(0.68, -0.55, 0.27, 1.55)';
+      
+      const gameResult = await playGame('coinflip', betAmount);
+      
+      setTimeout(() => {
+        coin.style.animation = '';
+        const isWin = gameResult.won;
+        const resultText = gameResult.gameResult.result;
+        
+        coin.textContent = resultText === 'heads' ? '👑' : '🪙';
+        
+        if (isWin) {
+          result.textContent = `${resultText.toUpperCase()}! You won ${gameResult.winnings} credits! (+${gameResult.creditsChange})`;
+          result.className = 'game-result win';
+        } else {
+          result.textContent = `${resultText.toUpperCase()}! You lost ${betAmount} credits`;
+          result.className = 'game-result lose';
+        }
+        
+        setTimeout(() => {
+          coin.textContent = '🪙';
+          result.textContent = '';
+          result.className = 'game-result';
+        }, 5000);
+      }, 2000);
+    } catch (err) {
+      coin.style.animation = '';
+      result.textContent = err.message;
+      result.className = 'game-result lose';
+      setTimeout(() => {
+        result.textContent = '';
+        result.className = 'game-result';
+      }, 5000);
+    } finally {
+      setButtonLoading(flipBtn, false);
+    }
+  };
+}
+
+function loadSlotsGame(config, container) {
+  const betSelector = createBetSelector(config);
+  
+  container.innerHTML = `
+    <div class="slots-container">
+      <div class="slots-reels">
+        <div class="slot-reel" id="reel1">🍒</div>
+        <div class="slot-reel" id="reel2">🍋</div>
+        <div class="slot-reel" id="reel3">🍊</div>
+      </div>
+      <div id="slots-bet-container"></div>
+      <button id="spin-btn" class="btn btn-primary">Spin Reels</button>
+      <div id="slots-result" class="game-result"></div>
+    </div>
+  `;
+  
+  const betContainer = container.querySelector('#slots-bet-container');
+  betContainer.appendChild(betSelector.element);
+  
+  const spinBtn = container.querySelector('#spin-btn');
+  const result = container.querySelector('#slots-result');
+  const reels = [
+    container.querySelector('#reel1'),
+    container.querySelector('#reel2'),
+    container.querySelector('#reel3')
+  ];
+  
+  const symbols = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '⭐', '7️⃣'];
+  
+  spinBtn.onclick = async () => {
+    const betAmount = betSelector.getValue();
+    
+    if (credits < betAmount) {
+      result.textContent = `Not enough credits! Need ${betAmount} credits.`;
+      result.className = 'game-result lose';
+      setTimeout(() => {
+        result.textContent = '';
+        result.className = 'game-result';
+      }, 5000);
+      return;
+    }
+    
+    setButtonLoading(spinBtn, true);
+    
+    let spinCount = 0;
+    const spinInterval = setInterval(() => {
+      reels.forEach(reel => {
+        reel.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        reel.style.transform = `scale(${0.8 + Math.random() * 0.4})`;
+      });
+      spinCount++;
+      
+      if (spinCount > 30) {
+        clearInterval(spinInterval);
+        handleSlotsResult();
+      }
+    }, 100);
+    
+    async function handleSlotsResult() {
+      try {
+        const gameResult = await playGame('slots', betAmount);
+        const finalSymbols = gameResult.gameResult.symbols;
+        
+        reels.forEach((reel, i) => {
+          reel.textContent = finalSymbols[i];
+          reel.style.transform = 'scale(1)';
+        });
+        
+        if (gameResult.won) {
+          const winType = gameResult.gameResult.winType;
+          result.textContent = `${finalSymbols.join(' ')} - ${winType.toUpperCase()}! Won ${gameResult.winnings} credits! (+${gameResult.creditsChange})`;
+          result.className = 'game-result win';
+        } else {
+          result.textContent = `${finalSymbols.join(' ')} - Try again! Lost ${betAmount} credits`;
+          result.className = 'game-result lose';
+        }
+        
+        setTimeout(() => {
+          result.textContent = '';
+          result.className = 'game-result';
+        }, 5000);
+      } catch (err) {
+        result.textContent = err.message;
+        result.className = 'game-result lose';
+        setTimeout(() => {
+          result.textContent = '';
+          result.className = 'game-result';
+        }, 5000);
+      } finally {
+        setButtonLoading(spinBtn, false);
+      }
+    }
+  };
+}
+
+function loadDiceGame(config, container) {
+  const betSelector = createBetSelector(config);
+  
+  container.innerHTML = `
+    <div class="dice-container">
+      <div class="dice-pair">
+        <div class="dice" id="dice1">1</div>
+        <div class="dice" id="dice2">1</div>
+      </div>
+      <div id="dice-bet-container"></div>
+      <div class="betting-options">
+        <div class="bet-option" data-bet="low">Low (2-6)</div>
+        <div class="bet-option" data-bet="high">High (8-12)</div>
+        <div class="bet-option" data-bet="seven">Lucky 7</div>
+      </div>
+      <button id="roll-btn" class="btn btn-primary">Roll Dice</button>
+      <div id="dice-result" class="game-result"></div>
+    </div>
+  `;
+  
+  const betContainer = container.querySelector('#dice-bet-container');
+  betContainer.appendChild(betSelector.element);
+  
+  let selectedBet = null;
+  const betOptions = container.querySelectorAll('.bet-option');
+  const rollBtn = container.querySelector('#roll-btn');
+  const result = container.querySelector('#dice-result');
+  const dice1 = container.querySelector('#dice1');
+  const dice2 = container.querySelector('#dice2');
+  
+  betOptions.forEach(option => {
+    option.onclick = () => {
+      betOptions.forEach(opt => opt.classList.remove('selected'));
+      option.classList.add('selected');
+      selectedBet = option.dataset.bet;
+    };
+  });
+  
+  rollBtn.onclick = async () => {
+    const betAmount = betSelector.getValue();
+    
+    if (!selectedBet) {
+      result.textContent = 'Select a bet type first!';
+      result.className = 'game-result lose';
+      setTimeout(() => {
+        result.textContent = '';
+        result.className = 'game-result';
+      }, 5000);
+      return;
+    }
+    
+    if (credits < betAmount) {
+      result.textContent = `Not enough credits! Need ${betAmount} credits.`;
+      result.className = 'game-result lose';
+      setTimeout(() => {
+        result.textContent = '';
+        result.className = 'game-result';
+      }, 5000);
+      return;
+    }
+    
+    setButtonLoading(rollBtn, true);
+    
+    dice1.classList.add('rolling');
+    dice2.classList.add('rolling');
+    
+    try {
+      const gameResult = await playGame('dice', betAmount, { betType: selectedBet });
+      
+      setTimeout(() => {
+        const diceResults = gameResult.gameResult.dice;
+        const total = gameResult.gameResult.total;
+        
+        dice1.textContent = diceResults[0];
+        dice2.textContent = diceResults[1];
+        dice1.classList.remove('rolling');
+        dice2.classList.remove('rolling');
+        
+        if (gameResult.won) {
+          result.textContent = `Rolled ${total}! Won ${gameResult.winnings} credits! (+${gameResult.creditsChange})`;
+          result.className = 'game-result win';
+        } else {
+          result.textContent = `Rolled ${total} - Try again! Lost ${betAmount} credits`;
+          result.className = 'game-result lose';
+        }
+        
+        setTimeout(() => {
+          result.textContent = '';
+          result.className = 'game-result';
+        }, 5000);
+      }, 1500);
+    } catch (err) {
+      dice1.classList.remove('rolling');
+      dice2.classList.remove('rolling');
+      result.textContent = err.message;
+      result.className = 'game-result lose';
+      setTimeout(() => {
+        result.textContent = '';
+        result.className = 'game-result';
+      }, 5000);
+    } finally {
+      setButtonLoading(rollBtn, false);
+    }
+  };
+}
+
+function loadScratchGame(config, container) {
+  const betSelector = createBetSelector(config);
+  
+  container.innerHTML = `
+    <div class="scratch-container">
+      <div class="scratch-card" id="scratch-card">
+        <div class="scratch-surface" id="scratch-surface">Scratch Here!</div>
+        <div id="scratch-prize"></div>
+      </div>
+      <div id="scratch-bet-container"></div>
+      <button id="buy-scratch-btn" class="btn btn-primary">Buy Card</button>
+      <div id="scratch-result" class="game-result"></div>
+    </div>
+  `;
+  
+  const betContainer = container.querySelector('#scratch-bet-container');
+  betContainer.appendChild(betSelector.element);
+  
+  const buyBtn = container.querySelector('#buy-scratch-btn');
+  const result = container.querySelector('#scratch-result');
+  const surface = container.querySelector('#scratch-surface');
+  const prizeEl = container.querySelector('#scratch-prize');
+  
+  buyBtn.onclick = async () => {
+    const betAmount = betSelector.getValue();
+    
+    if (credits < betAmount) {
+      result.textContent = `Not enough credits! Need ${betAmount} credits.`;
+      result.className = 'game-result lose';
+      setTimeout(() => {
+        result.textContent = '';
+        result.className = 'game-result';
+      }, 5000);
+      return;
+    }
+    
+    setButtonLoading(buyBtn, true);
+    
+    try {
+      const gameResult = await playGame('scratch', betAmount);
+      
+      prizeEl.textContent = gameResult.gameResult.prizeText;
+      
+      setTimeout(() => {
+        surface.style.opacity = '0';
+        
+        setTimeout(() => {
+          if (gameResult.won) {
+            result.textContent = `You won ${gameResult.winnings} credits! (+${gameResult.creditsChange})`;
+            result.className = 'game-result win';
+          } else {
+            result.textContent = `Better luck next time! Lost ${betAmount} credits`;
+            result.className = 'game-result lose';
+          }
+          
+          setTimeout(() => {
+            surface.style.opacity = '1';
+            prizeEl.textContent = '';
+            result.textContent = '';
+            result.className = 'game-result';
+            setButtonLoading(buyBtn, false);
+          }, 5000);
+        }, 500);
+      }, 1000);
+    } catch (err) {
+      result.textContent = err.message;
+      result.className = 'game-result lose';
+      setTimeout(() => {
+        result.textContent = '';
+        result.className = 'game-result';
+      }, 5000);
+      setButtonLoading(buyBtn, false);
+    }
+  };
+}
+
+function showMessage(element, message, type = 'error') {
+  element.textContent = message;
+  element.className = `message ${type}`;
+  element.classList.remove('hidden');
+  setTimeout(() => element.classList.add('hidden'), 5000);
+}
+
+function setButtonLoading(button, loading) {
+  if (loading) {
+    button.classList.add('loading');
+    button.disabled = true;
+  } else {
+    button.classList.remove('loading');
+    button.disabled = false;
+  }
+}
+
+// Authentication
+loginBtn.onclick = () => authenticate("login");
+signupBtn.onclick = () => authenticate("signup");
+logoutBtn.onclick = () => {
+  currentUser = null;
+  credits = 0;
+  gameConfigs = {};
+  casinoSection.classList.add('hidden');
+  loginSection.classList.remove('hidden');
+  gameGrid.innerHTML = '';
+  if (refreshInterval) clearInterval(refreshInterval);
+};
+
+async function authenticate(type) {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  
+  if (!username || !password) {
+    showMessage(authMsg, "Please enter both username and password");
+    return;
+  }
+  
+  if (username.length < 3 || password.length < 3) {
+    showMessage(authMsg, "Username and password must be at least 3 characters");
+    return;
+  }
+  
+  const button = type === 'login' ? loginBtn : signupBtn;
+  setButtonLoading(button, true);
+  
+  try {
+    console.log(`Attempting ${type} with username: ${username}`);
+    const res = await fetch(`${API_URL}/${type}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    console.log(`${type} response:`, data);
+    
+    if (res.ok) {
+      currentUser = username;
+      credits = data.credits;
+      creditsDisplay.textContent = credits;
+      userDisplay.textContent = currentUser;
+      
+      loginSection.classList.add('hidden');
+      casinoSection.classList.remove('hidden');
+      
+      await loadGameConfigs();
+      startCreditRefresh();
+      
+      document.getElementById('username').value = '';
+      document.getElementById('password').value = '';
+      showMessage(authMsg, `${type === 'login' ? 'Login' : 'Sign up'} successful!`, 'success');
+    } else {
+      showMessage(authMsg, data.error || `${type} failed. Please try again.`);
+    }
+  } catch (err) {
+    console.error(`${type} error:`, err);
+    showMessage(authMsg, "Server connection error. Please try again.");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+// Auto refresh user credits every 10 seconds
+let refreshInterval = null;
+function startCreditRefresh() {
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(async () => {
+    if (!currentUser) return;
+    try {
+      // Avoid sending empty password; rely on backend to maintain state or use token-based auth
+      console.log('Refreshing credits for:', currentUser);
+      const res = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: currentUser, password: localStorage.getItem(`password_${currentUser}`) || '' })
+      });
+      if (!res.ok && res.status !== 400) {
+        throw new Error(`Failed to refresh credits: ${res.status}`);
+      }
+      const data = await res.json();
+      if (res.ok) {
+        credits = data.credits;
+        creditsDisplay.textContent = credits;
+        console.log('Credits updated:', credits);
+      }
+    } catch (err) {
+      console.error('Credit refresh error:', err);
+    }
+  }, 10000);
+}
+
+// Store password temporarily for refresh (not secure; consider JWT for production)
+function authenticate(type) {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  
+  if (!username || !password) {
+    showMessage(authMsg, "Please enter both username and password");
+    return;
+  }
+  
+  if (username.length < 3 || password.length < 3) {
+    showMessage(authMsg, "Username and password must be at least 3 characters");
+    return;
+  }
+  
+  const button = type === 'login' ? loginBtn : signupBtn;
+  setButtonLoading(button, true);
+  
+  fetch(`${API_URL}/${type}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  })
+    .then(res => res.json().then(data => ({ res, data })))
+    .then(({ res, data }) => {
+      console.log(`${type} response:`, data);
+      if (res.ok) {
+        currentUser = username;
+        credits = data.credits;
+        creditsDisplay.textContent = credits;
+        userDisplay.textContent = currentUser;
+        localStorage.setItem(`password_${username}`, password); // Temporary for refresh
+        
+        loginSection.classList.add('hidden');
+        casinoSection.classList.remove('hidden');
+        
+        loadGameConfigs();
+        startCreditRefresh();
+        
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        showMessage(authMsg, `${type === 'login' ? 'Login' : 'Sign up'} successful!`, 'success');
+      } else {
+        showMessage(authMsg, data.error || `${type} failed. Please try again.`);
+      }
+    })
+    .catch(err => {
+      console.error(`${type} error:`, err);
+      showMessage(authMsg, "Server connection error. Please try again.");
+    })
+    .finally(() => {
+      setButtonLoading(button, false);
+    });
+}
+
+// Initialize on load
+window.addEventListener('load', () => {
+  console.log('Page loaded; waiting for user login');
+});
+</script>
+</body>
+</html>

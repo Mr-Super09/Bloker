@@ -1,0 +1,92 @@
+Prompt:
+
+Build a real-time multiplayer web application called Bloker (Blackjack × Poker hybrid).
+
+Features & Requirements
+🎮 Game Rules & Mechanics
+
+Implement all Bloker rules as described:
+
+1v1 game, players choose 1–3 decks of standard 52-card decks.
+
+Decks are shuffled and split evenly.
+
+Each player places 1 face-up card and 1 face-down card.
+
+Option in settings: allow player to peek at their own face-down card or not.
+
+Betting phase with raise/match until locked.
+
+Reveal face-down after betting.
+
+Players can Hit or Stay until both are done.
+
+Bust forfeits, but hidden until both finish.
+
+Winner = closest to 21 without busting, takes all cards and pot.
+
+Tiebreaker: each plays 1 face-down card → flip → highest wins (Ace best, King 2nd, 2 lowest).
+
+If tie: players can hit up to 2 more cards (max 3 total).
+
+Final hit/stay decides winner.
+
+Winner takes all cards in play.
+
+Game continues until one player has all cards.
+
+🃏 Cards
+
+Cards should look realistic (SVG/PNG deck).
+
+Include animations: dealing, flipping, hitting, sliding bets.
+
+👤 User System
+
+Login/Signup system (email + password).
+
+Store user profiles (username, win/loss record).
+
+Show a list of online users that you can challenge.
+
+Challenge system: send/accept/decline match requests.
+
+💬 Chat
+
+Global chat lobby.
+
+In-game private chat between 2 players.
+
+Basic chat moderation (filter bad words, allow admins to mute/ban users).
+
+🛠 Admin Panel
+
+Manage users: ban/unban, reset stats.
+
+Moderate chat: view logs, remove messages, mute users.
+
+⚙️ Game Settings
+
+Players can select:
+
+Number of decks (1–3).
+
+Whether face-down card is checkable (yes/no).
+
+💻 Tech Stack
+
+Frontend: React (with TailwindCSS for modern UI), animations with Framer Motion.
+
+Backend: Node.js with Express or Next.js API routes.
+
+Database: Supabase or Firebase (user auth, storing game states, chat).
+
+Real-time: WebSockets (Socket.IO or Supabase Realtime) for gameplay + chat sync.
+
+🎨 UI / UX
+
+Modern casino-style interface (dark theme, glowing buttons, card table look).
+
+Smooth transitions & animations.
+
+Mobile + desktop responsive.
