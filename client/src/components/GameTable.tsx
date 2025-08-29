@@ -210,9 +210,27 @@ export function GameTable({ gameId }: GameTableProps) {
               <span className="text-xs text-primary font-medium">Live</span>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
+            {/* Individual Player Bets */}
+            {((game.player1Bet || 0) > 0 || (game.player2Bet || 0) > 0) && (
+              <>
+                <div className="text-center">
+                  <div className="text-xs text-muted-foreground">P1 Bet</div>
+                  <div className="text-sm font-bold text-blue-400" data-testid="player1-bet">
+                    ${game.player1Bet || 0}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-muted-foreground">P2 Bet</div>
+                  <div className="text-sm font-bold text-green-400" data-testid="player2-bet">
+                    ${game.player2Bet || 0}
+                  </div>
+                </div>
+              </>
+            )}
+            {/* Total Pot */}
             <div className="text-center">
-              <div className="text-xs text-muted-foreground">Pot</div>
+              <div className="text-xs text-muted-foreground">Total Pot</div>
               <div className="text-sm font-bold text-accent" data-testid="pot-amount">
                 ${game.pot || 0}
               </div>

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertChallengeSchema, insertChatMessageSchema, type Card } from "@shared/schema";
 import { z } from "zod";
+import { gameLogic } from "./gameLogic.js";
 
 // Game engine utilities
 function createDeck(): Card[] {
@@ -498,7 +499,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : (typeof game.player1Cards === 'string' ? JSON.parse(game.player1Cards) : []);
         
         if (player1Cards.length === 0) {
-          return res.status(400).json({ message: "No cards remaining in your stack" });
+          // No cards left in personal stack - check if player has bet to continue with
+          const playerBet = game.player1Bet || 0;
+          if (playerBet === 0) {
+            // Player loses - no cards and no bet to take from
+            const totalPot = (game.player1Bet || 0) + (game.player2Bet || 0);
+            await storage.updateGame(gameId, {
+              winnerId: game.player2Id,
+              state: 'finished',
+              pot: totalPot
+            });
+            
+            await storage.updateUserStats(game.player2Id!, true, totalPot);
+            await storage.updateUserStats(userId, false, -playerBet);
+            
+            await storage.createChatMessage({
+              gameId,
+              userId: null,
+              message: 'Player 1 ran out of cards and has no bet to continue with. Player 2 wins!',
+              isSystemMessage: true,
+            });
+            
+            return res.status(400).json({ message: "You lose - no cards left and no bet to continue!" });
+          }
+          
+          // Create a random card from bet (simulate drawing from bet pile)
+          const suits: ('hearts' | 'diamonds' | 'clubs' | 'spades')[] = ['hearts', 'diamonds', 'clubs', 'spades'];
+          const values: ('A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K')[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+          const newCard: Card = {
+            suit: suits[Math.floor(Math.random() * suits.length)],
+            value: values[Math.floor(Math.random() * values.length)],
+            faceUp: true
+          };
+          
+          const player1Hand: Card[] = Array.isArray(game.player1Hand) 
+            ? game.player1Hand 
+            : (typeof game.player1Hand === 'string' ? JSON.parse(game.player1Hand) : []);
+          player1Hand.push(newCard);
+          
+          updates.player1Hand = player1Hand;
+          
+          // Add system message about drawing from bet
+          await storage.createChatMessage({
+            gameId,
+            userId: null,
+            message: 'Player 1 drew from their bet pile (personal stack empty)!',
+            isSystemMessage: true,
+          });
+          
+          // Check for bust
+          if (calculateHandValue(player1Hand) > 21) {
+            updates.player1Busted = true;
+          }
+          
+          const updatedGame = await storage.updateGame(gameId, updates);
+          return res.json(updatedGame);
         }
         
         const newCard = player1Cards.pop()!;
@@ -523,7 +578,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : (typeof game.player2Cards === 'string' ? JSON.parse(game.player2Cards) : []);
         
         if (player2Cards.length === 0) {
-          return res.status(400).json({ message: "No cards remaining in your stack" });
+          // No cards left in personal stack - check if player has bet to continue with
+          const playerBet = game.player2Bet || 0;
+          if (playerBet === 0) {
+            // Player loses - no cards and no bet to take from
+            const totalPot = (game.player1Bet || 0) + (game.player2Bet || 0);
+            await storage.updateGame(gameId, {
+              winnerId: game.player1Id,
+              state: 'finished',
+              pot: totalPot
+            });
+            
+            await storage.updateUserStats(game.player1Id!, true, totalPot);
+            await storage.updateUserStats(userId, false, -playerBet);
+            
+            await storage.createChatMessage({
+              gameId,
+              userId: null,
+              message: 'Player 2 ran out of cards and has no bet to continue with. Player 1 wins!',
+              isSystemMessage: true,
+            });
+            
+            return res.status(400).json({ message: "You lose - no cards left and no bet to continue!" });
+          }
+          
+          // Create a random card from bet (simulate drawing from bet pile)
+          const suits: ('hearts' | 'diamonds' | 'clubs' | 'spades')[] = ['hearts', 'diamonds', 'clubs', 'spades'];
+          const values: ('A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K')[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+          const newCard: Card = {
+            suit: suits[Math.floor(Math.random() * suits.length)],
+            value: values[Math.floor(Math.random() * values.length)],
+            faceUp: true
+          };
+          
+          const player2Hand: Card[] = Array.isArray(game.player2Hand) 
+            ? game.player2Hand 
+            : (typeof game.player2Hand === 'string' ? JSON.parse(game.player2Hand) : []);
+          player2Hand.push(newCard);
+          
+          updates.player2Hand = player2Hand;
+          
+          // Add system message about drawing from bet
+          await storage.createChatMessage({
+            gameId,
+            userId: null,
+            message: 'Player 2 drew from their bet pile (personal stack empty)!',
+            isSystemMessage: true,
+          });
+          
+          // Check for bust
+          if (calculateHandValue(player2Hand) > 21) {
+            updates.player2Busted = true;
+          }
+          
+          const updatedGame = await storage.updateGame(gameId, updates);
+          return res.json(updatedGame);
         }
         
         const newCard = player2Cards.pop()!;
@@ -601,7 +710,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else if (player2Value > player1Value) {
             winnerId = game.player2Id;
           }
-          // Tie case would trigger tiebreaker logic
+          // Tie case - trigger tiebreaker logic
+          else {
+            // Both players have same value - conduct tiebreaker
+            const remainingCards: Card[] = Array.isArray(game.remainingCards) 
+              ? game.remainingCards 
+              : (typeof game.remainingCards === 'string' ? JSON.parse(game.remainingCards) : []);
+              
+            const tiebreakerResult = gameLogic.conductTiebreaker(player1Hand, player2Hand, remainingCards);
+            
+            if (tiebreakerResult.winner) {
+              winnerId = tiebreakerResult.winner === 'player1' ? game.player1Id : game.player2Id;
+              updates.player1Hand = tiebreakerResult.player1Hand;
+              updates.player2Hand = tiebreakerResult.player2Hand;
+              updates.remainingCards = tiebreakerResult.remainingCards;
+              updates.state = 'tiebreaker';
+              
+              // Add system message about tiebreaker
+              await storage.createChatMessage({
+                gameId,
+                userId: null,
+                message: `Tie! Tiebreaker conducted. ${winnerId === game.player1Id ? 'Player 1' : 'Player 2'} wins with higher tiebreaker card!`,
+                isSystemMessage: true,
+              });
+            } else {
+              // Still tied after tiebreaker - could implement multiple rounds or declare draw
+              // For now, let's declare it a draw and split pot
+              updates.state = 'finished';
+              const halfPot = Math.floor((game.pot || 0) / 2);
+              
+              await storage.updateUserStats(game.player1Id, false, halfPot);
+              await storage.updateUserStats(game.player2Id!, false, halfPot);
+              
+              await storage.createChatMessage({
+                gameId,
+                userId: null,
+                message: `Double tie! It's a draw. Pot split equally between players.`,
+                isSystemMessage: true,
+              });
+            }
+          }
         }
         
         if (winnerId) {

@@ -7,7 +7,6 @@ import { OnlinePlayersList } from "@/components/OnlinePlayersList";
 import { ChallengesList } from "@/components/ChallengesList";
 import { GameTable } from "@/components/GameTable";
 import { GameChat } from "@/components/GameChat";
-import { GameSettings } from "@/components/GameSettings";
 import { Spade, LogOut, Coins, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -15,10 +14,6 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 export default function Home() {
   const { user = {}, isLoading: authLoading } = useAuth() as { user: any, isLoading: boolean };
   const { toast } = useToast();
-  const [gameSettings, setGameSettings] = useState({
-    numDecks: 1,
-    allowPeek: true,
-  });
 
   const { data: activeGame } = useQuery({
     queryKey: ['/api/games/active'],
@@ -131,11 +126,6 @@ export default function Home() {
           <div className="lg:col-span-1 space-y-6">
             <OnlinePlayersList />
             <ChallengesList />
-            <GameSettings 
-              numDecks={gameSettings.numDecks}
-              allowPeek={gameSettings.allowPeek}
-              onSettingsChange={setGameSettings}
-            />
           </div>
 
           {/* Main Game Area */}
