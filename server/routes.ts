@@ -559,14 +559,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not a player in this game" });
       }
       
-      // End the game and declare the other player as winner
+      // Calculate the pot and winnings
+      const leaverBet = isPlayer1 ? (game.player1Bet || 0) : (game.player2Bet || 0);
+      const remainingPlayerBet = isPlayer1 ? (game.player2Bet || 0) : (game.player1Bet || 0);
+      const totalPot = leaverBet + remainingPlayerBet;
+      
+      // The remaining player wins both bets
       const winnerId = isPlayer1 ? game.player2Id : game.player1Id;
+      const loserId = userId;
+      
+      // Update game state
       await storage.updateGame(gameId, { 
         state: 'finished',
-        winnerId: winnerId 
+        winnerId: winnerId,
+        pot: totalPot
       });
       
-      res.json({ success: true });
+      // Update winner's stats (wins, total winnings, credits)
+      const winner = await storage.getUser(winnerId);
+      if (winner) {
+        await storage.updateUser(winnerId, {
+          wins: (winner.wins || 0) + 1,
+          totalWinnings: (winner.totalWinnings || 0) + totalPot,
+          credits: (winner.credits || 0) + totalPot
+        });
+      }
+      
+      // Update loser's stats (losses, credits decreased by their bet)
+      const loser = await storage.getUser(loserId);
+      if (loser) {
+        await storage.updateUser(loserId, {
+          losses: (loser.losses || 0) + 1,
+          credits: Math.max(0, (loser.credits || 0) - leaverBet) // Don't go below 0
+        });
+      }
+      
+      // Add system message to chat
+      await storage.createChatMessage({
+        gameId,
+        userId: null,
+        message: `${loser?.firstName || 'Player'} left the game. ${winner?.firstName || 'Player'} wins $${totalPot}!`,
+        isSystemMessage: true,
+      });
+      
+      res.json({ success: true, winnings: totalPot });
     } catch (error) {
       console.error("Error leaving game:", error);
       res.status(500).json({ message: "Failed to leave game" });
