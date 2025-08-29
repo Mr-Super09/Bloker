@@ -23,8 +23,8 @@ export function GameSettingsVoting({ game, currentUserId }: GameSettingsVotingPr
   const queryClient = useQueryClient();
 
   const isPlayer1 = game.player1Id === currentUserId;
-  const player1Vote = JSON.parse(game.player1SettingsVote || '{}');
-  const player2Vote = JSON.parse(game.player2SettingsVote || '{}');
+  const player1Vote = game.player1SettingsVote || {};
+  const player2Vote = game.player2SettingsVote || {};
   const hasVoted = isPlayer1 ? !!player1Vote.numDecks : !!player2Vote.numDecks;
   const otherPlayerVoted = isPlayer1 ? !!player2Vote.numDecks : !!player1Vote.numDecks;
 
