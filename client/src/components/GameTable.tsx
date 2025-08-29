@@ -68,6 +68,21 @@ export function GameTable({ gameId }: GameTableProps) {
     refetchInterval: 2000, // Poll every 2 seconds for real-time updates
   });
 
+  // Get recent chat messages to show round results
+  const { data: chatMessages = [] } = useQuery<any[]>({
+    queryKey: ['/api/games', gameId, 'chat'],
+    refetchInterval: 2000,
+  });
+
+  // Find the most recent round winner message (within last 10 seconds)
+  const recentRoundWinner = chatMessages
+    .filter(msg => msg.isSystemMessage && msg.message.includes('wins the round'))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  
+  const showRecentWinner = recentRoundWinner && 
+    (new Date().getTime() - new Date(recentRoundWinner.createdAt).getTime() < 8000) && // Show for 8 seconds
+    (game.state === 'betting'); // Only show during betting phase (just after round ended)
+
   const betMutation = useMutation({
     mutationFn: async ({ action, amount }: { action: string; amount?: number }) => {
       await apiRequest('POST', `/api/games/${gameId}/bet`, { action, amount });
@@ -307,31 +322,63 @@ export function GameTable({ gameId }: GameTableProps) {
           </div>
         </div>
 
-        {/* Center Area: Betting & Actions - Compact */}
+        {/* Center Area: Pot & Actions */}
         <div className="text-center py-4">
-          {/* Pot and Chips - Compact */}
-          <div className="flex justify-center space-x-2 mb-3">
-            {(game.pot as number) > 0 && (
-              <>
-                <div className="chip text-xs">$50</div>
-                <div className="chip text-xs">$100</div>
-                <div className="chip text-xs">$250</div>
-              </>
-            )}
+          {/* Pot Display - Prominent */}
+          <div className="mb-4">
+            <div className="inline-flex flex-col items-center bg-gradient-to-br from-accent/20 to-primary/20 border-2 border-accent/50 rounded-2xl px-6 py-4">
+              <div className="text-xs text-muted-foreground mb-1">TOTAL POT</div>
+              <div className="text-3xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent" data-testid="center-pot-value">
+                ${game.pot || 0}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">Winner takes all</div>
+            </div>
           </div>
           
-          {/* Current Phase */}
-          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-3">
-            <div className="text-xs text-muted-foreground mb-1">Current Phase</div>
-            <div className="text-sm font-bold text-primary capitalize" data-testid="game-phase">
-              {(game.state as string)?.replace('_', ' ') || 'Loading...'}
+          {/* Current Phase or Round Winner Display */}
+          {(game.state as string) === 'finished' ? (
+            <div className="bg-gradient-to-r from-accent/20 to-primary/20 border-2 border-accent rounded-lg p-4 mb-3">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-accent mb-2">🎉 GAME OVER! 🎉</div>
+                <div className="text-lg font-semibold mb-2">
+                  {game.winnerId === (currentUser as any)?.id ? 'YOU WIN!' : 
+                   `${game.winnerId === game.player1Id ? (game.player1 as any)?.firstName : (game.player2 as any)?.firstName} WINS!`}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Winner takes the final pot and all remaining cards!
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {(game.state as string) === 'betting' ? 'Poker betting round' : 
-               (game.state as string) === 'hitting_staying' ? 'Blackjack phase - Hit or Stay' : 
-               (game.state as string) === 'setting_up' ? 'Voting on game settings' : 'Wait for action'}
+          ) : showRecentWinner ? (
+            <div className="bg-gradient-to-r from-green-500/20 to-primary/20 border-2 border-green-400 rounded-lg p-4 mb-3 animate-pulse">
+              <div className="text-center">
+                <div className="text-xl font-bold text-green-400 mb-2">🏆 ROUND WINNER! 🏆</div>
+                <div className="text-lg font-semibold mb-2">
+                  {recentRoundWinner.message.includes('Player 1 wins') ? 
+                    (isCurrentUserPlayer1 ? 'YOU WON!' : `${(game.player1 as any)?.firstName} WINS!`) :
+                    recentRoundWinner.message.includes('Player 2 wins') ? 
+                      (isCurrentUserPlayer1 ? `${(game.player2 as any)?.firstName} WINS!` : 'YOU WON!') :
+                      'Round Complete'
+                  }
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {recentRoundWinner.message}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-3">
+              <div className="text-xs text-muted-foreground mb-1">Current Phase</div>
+              <div className="text-sm font-bold text-primary capitalize" data-testid="game-phase">
+                {(game.state as string)?.replace('_', ' ') || 'Loading...'}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {(game.state as string) === 'betting' ? 'Poker betting round' : 
+                 (game.state as string) === 'hitting_staying' ? 'Blackjack phase - Hit or Stay' : 
+                 (game.state as string) === 'setting_up' ? 'Voting on game settings' : 'Wait for action'}
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons - Compact */}
           {(game.state as string) === 'betting' ? (
