@@ -8,6 +8,7 @@ import { ChallengesList } from "@/components/ChallengesList";
 import { GameTable } from "@/components/GameTable";
 import { GameChat } from "@/components/GameChat";
 import { Spade, LogOut, Coins, BarChart3 } from "lucide-react";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
@@ -17,8 +18,16 @@ export default function Home() {
 
   const { data: activeGame } = useQuery({
     queryKey: ['/api/games/active'],
-    refetchInterval: 5000,
+    refetchInterval: 2000, // Check every 2 seconds for faster detection
   }) as { data: any };
+  
+  // Auto-redirect to active game if one exists
+  useEffect(() => {
+    if (activeGame && activeGame.id) {
+      console.log('Active game detected, redirecting to game:', activeGame.id);
+      window.location.href = `/game/${activeGame.id}`;
+    }
+  }, [activeGame]);
 
   const logoutMutation = useMutation({
     mutationFn: async () => {

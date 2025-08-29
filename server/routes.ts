@@ -552,7 +552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create game in setting_up state for voting on settings
-      const settingsDeadline = new Date(Date.now() + 60000); // 1 minute to vote
+      const settingsDeadline = new Date(Date.now() + 120000); // 2 minutes to vote
       const game = await storage.createGame({
         player1Id: challenge.challengerId,
         player2Id: challenge.challengedId,
