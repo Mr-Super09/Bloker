@@ -96,8 +96,24 @@ async function checkExpiredVotingDeadlines(): Promise<void> {
     const expiredGames = await storage.getGamesWithExpiredVoting();
     
     for (const game of expiredGames) {
-      const player1Vote = JSON.parse(game.player1SettingsVote as string || '{}');
-      const player2Vote = JSON.parse(game.player2SettingsVote as string || '{}');
+      let player1Vote = {};
+      let player2Vote = {};
+      
+      try {
+        player1Vote = typeof game.player1SettingsVote === 'string' 
+          ? JSON.parse(game.player1SettingsVote) 
+          : game.player1SettingsVote || {};
+      } catch {
+        player1Vote = {};
+      }
+      
+      try {
+        player2Vote = typeof game.player2SettingsVote === 'string' 
+          ? JSON.parse(game.player2SettingsVote) 
+          : game.player2SettingsVote || {};
+      } catch {
+        player2Vote = {};
+      }
       
       // Use available votes or defaults
       const finalPlayer1Vote = {
@@ -328,8 +344,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedGame = await storage.updateGame(gameId, updates);
       
       // Check if both players have voted
-      const player1Vote = isPlayer1 ? settingsVote : JSON.parse(updatedGame.player1SettingsVote as string || '{}');
-      const player2Vote = isPlayer2 ? settingsVote : JSON.parse(updatedGame.player2SettingsVote as string || '{}');
+      const player1Vote = isPlayer1 ? settingsVote : (typeof updatedGame.player1SettingsVote === 'string' ? JSON.parse(updatedGame.player1SettingsVote) : updatedGame.player1SettingsVote || {});
+      const player2Vote = isPlayer2 ? settingsVote : (typeof updatedGame.player2SettingsVote === 'string' ? JSON.parse(updatedGame.player2SettingsVote) : updatedGame.player2SettingsVote || {});
       
       if (player1Vote.numDecks && player2Vote.numDecks) {
         // Both players have voted, finalize settings
