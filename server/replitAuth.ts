@@ -7,6 +7,33 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { readFileSync } from "fs";
+import { resolve } from "path";
+
+// Load environment variables from .env file if they don't exist
+if (!process.env.SESSION_SECRET) {
+  try {
+    const envFile = readFileSync(resolve(process.cwd(), ".env"), "utf8");
+    const envVars = envFile.split("\n").reduce((acc, line) => {
+      const [key, value] = line.split("=");
+      if (key && value) {
+        acc[key.trim()] = value.trim();
+      }
+      return acc;
+    }, {} as Record<string, string>);
+    
+    Object.keys(envVars).forEach(key => {
+      if (!process.env[key]) {
+        process.env[key] = envVars[key];
+      }
+    });
+  } catch (error) {
+    // If .env file doesn't exist, use fallback
+    if (!process.env.SESSION_SECRET) {
+      process.env.SESSION_SECRET = "91baa85f70c0d446085957bb67181ea860ebd6a3eb15e026b7db5996a5a1daa2";
+    }
+  }
+}
 
 if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Environment variable REPLIT_DOMAINS not provided");
