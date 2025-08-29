@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { PlayingCard } from "./PlayingCard";
-import { Card } from "@shared/schema";
+import { Card, type Game } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Spade, TrendingUp, TrendingDown, Flag } from "lucide-react";
 
@@ -40,7 +40,7 @@ export function GameTable({ gameId }: GameTableProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: game = {}, isLoading } = useQuery({
+  const { data: game, isLoading } = useQuery<any>({
     queryKey: ['/api/games', gameId],
     refetchInterval: 2000, // Poll every 2 seconds for real-time updates
   });
@@ -128,8 +128,27 @@ export function GameTable({ gameId }: GameTableProps) {
     );
   }
 
-  const player1Hand: Card[] = JSON.parse(game.player1Hand || '[]');
-  const player2Hand: Card[] = JSON.parse(game.player2Hand || '[]');
+  const player1Hand: Card[] = (() => {
+    try {
+      if (typeof game.player1Hand === 'string') {
+        return JSON.parse(game.player1Hand);
+      }
+      return Array.isArray(game.player1Hand) ? game.player1Hand : [];
+    } catch (e) {
+      return [];
+    }
+  })();
+  
+  const player2Hand: Card[] = (() => {
+    try {
+      if (typeof game.player2Hand === 'string') {
+        return JSON.parse(game.player2Hand);
+      }
+      return Array.isArray(game.player2Hand) ? game.player2Hand : [];
+    } catch (e) {
+      return [];
+    }
+  })();
   const player1Value = calculateHandValue(player1Hand.filter(c => c.faceUp));
   const player2Value = calculateHandValue(player2Hand.filter(c => c.faceUp));
 
