@@ -412,27 +412,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not a player in this game" });
       }
       
-      const remainingCards: Card[] = JSON.parse(game.remainingCards as string);
+      const remainingCards: Card[] = Array.isArray(game.remainingCards) 
+        ? game.remainingCards 
+        : (typeof game.remainingCards === 'string' ? JSON.parse(game.remainingCards) : []);
+      
+      if (remainingCards.length === 0) {
+        return res.status(400).json({ message: "No cards remaining" });
+      }
+      
       const newCard = remainingCards.pop()!;
       newCard.faceUp = true;
       
       const updates: any = {
-        remainingCards: JSON.stringify(remainingCards),
+        remainingCards: remainingCards,
       };
       
       if (isPlayer1) {
-        const player1Hand: Card[] = JSON.parse(game.player1Hand as string);
+        const player1Hand: Card[] = Array.isArray(game.player1Hand) 
+          ? game.player1Hand 
+          : (typeof game.player1Hand === 'string' ? JSON.parse(game.player1Hand) : []);
         player1Hand.push(newCard);
-        updates.player1Hand = JSON.stringify(player1Hand);
+        updates.player1Hand = player1Hand;
         
         // Check for bust
         if (calculateHandValue(player1Hand) > 21) {
           updates.player1Busted = true;
         }
       } else {
-        const player2Hand: Card[] = JSON.parse(game.player2Hand as string);
+        const player2Hand: Card[] = Array.isArray(game.player2Hand) 
+          ? game.player2Hand 
+          : (typeof game.player2Hand === 'string' ? JSON.parse(game.player2Hand) : []);
         player2Hand.push(newCard);
-        updates.player2Hand = JSON.stringify(player2Hand);
+        updates.player2Hand = player2Hand;
         
         // Check for bust
         if (calculateHandValue(player2Hand) > 21) {
@@ -475,8 +486,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if both players are ready to determine winner
       if ((isPlayer1 && game.player2Ready) || (isPlayer2 && game.player1Ready)) {
-        const player1Hand: Card[] = JSON.parse(game.player1Hand as string);
-        const player2Hand: Card[] = JSON.parse(game.player2Hand as string);
+        const player1Hand: Card[] = Array.isArray(game.player1Hand) 
+          ? game.player1Hand 
+          : (typeof game.player1Hand === 'string' ? JSON.parse(game.player1Hand) : []);
+        const player2Hand: Card[] = Array.isArray(game.player2Hand) 
+          ? game.player2Hand 
+          : (typeof game.player2Hand === 'string' ? JSON.parse(game.player2Hand) : []);
         
         const player1Value = calculateHandValue(player1Hand);
         const player2Value = calculateHandValue(player2Hand);

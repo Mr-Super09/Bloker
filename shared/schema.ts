@@ -97,8 +97,6 @@ export const challenges = pgTable("challenges", {
   challengedId: varchar("challenged_id").notNull().references(() => users.id),
   status: challengeStatusEnum("status").default('pending'),
   message: text("message"),
-  minBet: integer("min_bet").default(10),
-  gameSettings: jsonb("game_settings").default('{}'),
   gameId: varchar("game_id").references(() => games.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -195,8 +193,6 @@ export const insertChallengeSchema = createInsertSchema(challenges).pick({
   challengerId: true,
   challengedId: true,
   message: true,
-  minBet: true,
-  gameSettings: true,
 });
 
 export const insertChatMessageSchema = createInsertSchema(chatMessages).pick({
