@@ -140,7 +140,7 @@ async function initializeGame(gameId: string, numDecks: number = 1): Promise<voi
   }
   allCards = shuffleDeck(allCards);
   
-  // Deal initial cards
+  // Deal initial cards - one face up, one face down for each player
   const player1Hand = [allCards.pop()!, allCards.pop()!];
   const player2Hand = [allCards.pop()!, allCards.pop()!];
   
@@ -150,11 +150,18 @@ async function initializeGame(gameId: string, numDecks: number = 1): Promise<voi
   player2Hand[0].faceUp = true;  // First card face-up
   player2Hand[1].faceUp = false; // Second card face-down
   
+  // Split remaining cards evenly between players as personal card stacks
+  const halfwayPoint = Math.floor(allCards.length / 2);
+  const player1Cards = allCards.slice(0, halfwayPoint);
+  const player2Cards = allCards.slice(halfwayPoint);
+  
   await storage.updateGame(gameId, {
-    remainingCards: JSON.stringify(allCards),
+    player1Cards: JSON.stringify(player1Cards),
+    player2Cards: JSON.stringify(player2Cards),
     player1Hand: JSON.stringify(player1Hand),
     player2Hand: JSON.stringify(player2Hand),
-    state: 'cards_dealt',
+    remainingCards: JSON.stringify([]), // No longer needed as each player has their own stack
+    state: 'betting', // Move to betting phase after cards are dealt
   });
 }
 
@@ -359,15 +366,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Poker-style betting routes
   app.post('/api/games/:id/bet', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const gameId = req.params.id;
-      const { amount } = req.body;
+      const { action, amount } = req.body; // action: 'raise', 'match', 'fold'
       
       const game = await storage.getGame(gameId);
       if (!game) {
         return res.status(404).json({ message: "Game not found" });
+      }
+      
+      if (game.state !== 'betting') {
+        return res.status(400).json({ message: "Game is not in betting phase" });
       }
       
       const isPlayer1 = game.player1Id === userId;
@@ -377,21 +389,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not a player in this game" });
       }
       
-      const updates: any = {
-        pot: game.pot + amount,
-      };
+      const updates: any = {};
       
-      if (isPlayer1) {
-        updates.player1Bet = game.player1Bet + amount;
-      } else {
-        updates.player2Bet = game.player2Bet + amount;
+      if (action === 'fold') {
+        // Player folds - other player wins
+        const winnerId = isPlayer1 ? game.player2Id : game.player1Id;
+        const totalPot = (game.player1Bet || 0) + (game.player2Bet || 0);
+        
+        updates.winnerId = winnerId;
+        updates.state = 'finished';
+        updates.pot = totalPot;
+        
+        // Update stats
+        await storage.updateUserStats(winnerId!, true, totalPot);
+        await storage.updateUserStats(userId, false, -(isPlayer1 ? (game.player1Bet || 0) : (game.player2Bet || 0)));
+        
+        await storage.createChatMessage({
+          gameId,
+          userId: null,
+          message: `${isPlayer1 ? 'Player 1' : 'Player 2'} folded. ${winnerId === game.player1Id ? 'Player 1' : 'Player 2'} wins $${totalPot}!`,
+          isSystemMessage: true,
+        });
+        
+      } else if (action === 'match') {
+        // Match the opponent's bet
+        const opponentBet = isPlayer1 ? (game.player2Bet || 0) : (game.player1Bet || 0);
+        const currentBet = isPlayer1 ? (game.player1Bet || 0) : (game.player2Bet || 0);
+        const betDifference = opponentBet - currentBet;
+        
+        if (betDifference <= 0) {
+          return res.status(400).json({ message: "No bet to match" });
+        }
+        
+        updates.pot = (game.pot || 0) + betDifference;
+        if (isPlayer1) {
+          updates.player1Bet = opponentBet;
+        } else {
+          updates.player2Bet = opponentBet;
+        }
+        
+        // Check if betting is complete (both players have equal bets)
+        if ((game.player1Bet || 0) + (isPlayer1 ? betDifference : 0) === (game.player2Bet || 0) + (isPlayer2 ? betDifference : 0)) {
+          updates.state = 'hitting_staying';
+          
+          // If allowPeek is enabled, reveal face down cards
+          if (game.allowPeek) {
+            const player1Hand: Card[] = Array.isArray(game.player1Hand) 
+              ? game.player1Hand 
+              : (typeof game.player1Hand === 'string' ? JSON.parse(game.player1Hand) : []);
+            const player2Hand: Card[] = Array.isArray(game.player2Hand) 
+              ? game.player2Hand 
+              : (typeof game.player2Hand === 'string' ? JSON.parse(game.player2Hand) : []);
+              
+            // Reveal face down cards to players
+            player1Hand.forEach(card => { if (!card.faceUp) card.faceUp = true; });
+            player2Hand.forEach(card => { if (!card.faceUp) card.faceUp = true; });
+            
+            updates.player1Hand = player1Hand;
+            updates.player2Hand = player2Hand;
+          }
+        }
+        
+      } else if (action === 'raise') {
+        // Raise the bet
+        if (!amount || amount <= 0) {
+          return res.status(400).json({ message: "Invalid raise amount" });
+        }
+        
+        updates.pot = (game.pot || 0) + amount;
+        if (isPlayer1) {
+          updates.player1Bet = (game.player1Bet || 0) + amount;
+        } else {
+          updates.player2Bet = (game.player2Bet || 0) + amount;
+        }
       }
       
       const updatedGame = await storage.updateGame(gameId, updates);
       res.json(updatedGame);
     } catch (error) {
-      console.error("Error placing bet:", error);
-      res.status(500).json({ message: "Failed to place bet" });
+      console.error("Error processing bet:", error);
+      res.status(500).json({ message: "Failed to process bet" });
     }
   });
 
@@ -412,26 +489,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not a player in this game" });
       }
       
-      const remainingCards: Card[] = Array.isArray(game.remainingCards) 
-        ? game.remainingCards 
-        : (typeof game.remainingCards === 'string' ? JSON.parse(game.remainingCards) : []);
-      
-      if (remainingCards.length === 0) {
-        return res.status(400).json({ message: "No cards remaining" });
-      }
-      
-      const newCard = remainingCards.pop()!;
-      newCard.faceUp = true;
-      
-      const updates: any = {
-        remainingCards: remainingCards,
-      };
+      const updates: any = {};
       
       if (isPlayer1) {
+        // Draw from player 1's personal card stack
+        const player1Cards: Card[] = Array.isArray(game.player1Cards) 
+          ? game.player1Cards 
+          : (typeof game.player1Cards === 'string' ? JSON.parse(game.player1Cards) : []);
+        
+        if (player1Cards.length === 0) {
+          return res.status(400).json({ message: "No cards remaining in your stack" });
+        }
+        
+        const newCard = player1Cards.pop()!;
+        newCard.faceUp = true;
+        
         const player1Hand: Card[] = Array.isArray(game.player1Hand) 
           ? game.player1Hand 
           : (typeof game.player1Hand === 'string' ? JSON.parse(game.player1Hand) : []);
         player1Hand.push(newCard);
+        
+        updates.player1Cards = player1Cards;
         updates.player1Hand = player1Hand;
         
         // Check for bust
@@ -439,10 +517,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updates.player1Busted = true;
         }
       } else {
+        // Draw from player 2's personal card stack
+        const player2Cards: Card[] = Array.isArray(game.player2Cards) 
+          ? game.player2Cards 
+          : (typeof game.player2Cards === 'string' ? JSON.parse(game.player2Cards) : []);
+        
+        if (player2Cards.length === 0) {
+          return res.status(400).json({ message: "No cards remaining in your stack" });
+        }
+        
+        const newCard = player2Cards.pop()!;
+        newCard.faceUp = true;
+        
         const player2Hand: Card[] = Array.isArray(game.player2Hand) 
           ? game.player2Hand 
           : (typeof game.player2Hand === 'string' ? JSON.parse(game.player2Hand) : []);
         player2Hand.push(newCard);
+        
+        updates.player2Cards = player2Cards;
         updates.player2Hand = player2Hand;
         
         // Check for bust
@@ -576,23 +668,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Update winner's stats (wins, total winnings, credits)
-      const winner = await storage.getUser(winnerId);
-      if (winner) {
-        await storage.updateUser(winnerId, {
-          wins: (winner.wins || 0) + 1,
-          totalWinnings: (winner.totalWinnings || 0) + totalPot,
-          credits: (winner.credits || 0) + totalPot
-        });
+      if (winnerId) {
+        await storage.updateUserStats(winnerId, true, totalPot);
       }
       
-      // Update loser's stats (losses, credits decreased by their bet)
+      // Update loser's stats (losses, credits decreased by their bet) 
+      await storage.updateUserStats(loserId, false, -leaverBet);
+      
+      const winner = await storage.getUser(winnerId!);
       const loser = await storage.getUser(loserId);
-      if (loser) {
-        await storage.updateUser(loserId, {
-          losses: (loser.losses || 0) + 1,
-          credits: Math.max(0, (loser.credits || 0) - leaverBet) // Don't go below 0
-        });
-      }
       
       // Add system message to chat
       await storage.createChatMessage({

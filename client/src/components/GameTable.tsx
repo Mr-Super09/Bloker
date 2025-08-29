@@ -69,14 +69,14 @@ export function GameTable({ gameId }: GameTableProps) {
   });
 
   const betMutation = useMutation({
-    mutationFn: async (amount: number) => {
-      await apiRequest('POST', `/api/games/${gameId}/bet`, { amount });
+    mutationFn: async ({ action, amount }: { action: string; amount?: number }) => {
+      await apiRequest('POST', `/api/games/${gameId}/bet`, { action, amount });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/games', gameId] });
       toast({
-        title: "Bet Placed",
-        description: `You bet $${betAmount}`,
+        title: "Action Completed",
+        description: `You ${variables.action}${variables.amount ? ` $${variables.amount}` : ''}`,
       });
     },
     onError: (error) => {
@@ -172,6 +172,29 @@ export function GameTable({ gameId }: GameTableProps) {
       return [];
     }
   })();
+  // Parse player card stacks
+  const player1Cards: Card[] = (() => {
+    try {
+      if (typeof game.player1Cards === 'string') {
+        return JSON.parse(game.player1Cards);
+      }
+      return Array.isArray(game.player1Cards) ? game.player1Cards : [];
+    } catch (e) {
+      return [];
+    }
+  })();
+  
+  const player2Cards: Card[] = (() => {
+    try {
+      if (typeof game.player2Cards === 'string') {
+        return JSON.parse(game.player2Cards);
+      }
+      return Array.isArray(game.player2Cards) ? game.player2Cards : [];
+    } catch (e) {
+      return [];
+    }
+  })();
+  
   const player1Value = calculateHandValue(player1Hand.filter(c => c.faceUp));
   const player2Value = calculateHandValue(player2Hand.filter(c => c.faceUp));
 
@@ -230,16 +253,28 @@ export function GameTable({ gameId }: GameTableProps) {
             </div>
           </div>
           
-          {/* Opponent Cards - Smaller */}
-          <div className="flex justify-center space-x-2 mb-2">
-            {player2Hand.map((card, index) => (
-              <div key={index} className="scale-75">
-                <PlayingCard 
-                  card={card} 
-                  data-testid={`opponent-card-${index}`}
-                />
+          {/* Opponent Card Stack */}
+          <div className="flex items-center justify-center space-x-4 mb-2">
+            <div className="text-center">
+              <div className="w-12 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg border-2 border-blue-400 flex items-center justify-center">
+                <span className="text-white text-xs font-bold">
+                  {((currentUser as any)?.id === game.player1Id ? player2Cards.length : player1Cards.length)}
+                </span>
               </div>
-            ))}
+              <div className="text-xs text-muted-foreground mt-1">Cards Left</div>
+            </div>
+            
+            {/* Opponent Cards - Smaller */}
+            <div className="flex justify-center space-x-2">
+              {player2Hand.map((card, index) => (
+                <div key={index} className="scale-75">
+                  <PlayingCard 
+                    card={card} 
+                    data-testid={`opponent-card-${index}`}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -263,7 +298,9 @@ export function GameTable({ gameId }: GameTableProps) {
               {(game.state as string)?.replace('_', ' ') || 'Loading...'}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              {(game.state as string) === 'betting' ? 'Place your bets' : 'Hit or Stay'}
+              {(game.state as string) === 'betting' ? 'Poker betting round' : 
+               (game.state as string) === 'hitting_staying' ? 'Blackjack phase - Hit or Stay' : 
+               (game.state as string) === 'setting_up' ? 'Voting on game settings' : 'Wait for action'}
             </div>
           </div>
 
@@ -271,7 +308,7 @@ export function GameTable({ gameId }: GameTableProps) {
           {(game.state as string) === 'betting' ? (
             <div className="flex justify-center space-x-2">
               <Button 
-                onClick={() => betMutation.mutate(betAmount)}
+                onClick={() => betMutation.mutate({ action: 'raise', amount: betAmount })}
                 disabled={betMutation.isPending}
                 className="bg-secondary hover:bg-secondary/90 text-secondary-foreground px-4 py-2 shine-effect"
                 data-testid="button-raise"
@@ -281,7 +318,7 @@ export function GameTable({ gameId }: GameTableProps) {
                 Raise ${betAmount}
               </Button>
               <Button 
-                onClick={() => betMutation.mutate((game.player1Bet as number) || 0)}
+                onClick={() => betMutation.mutate({ action: 'match' })}
                 disabled={betMutation.isPending}
                 className="bg-accent hover:bg-accent/90 text-accent-foreground px-4 py-2 shine-effect"
                 data-testid="button-match"
@@ -291,6 +328,8 @@ export function GameTable({ gameId }: GameTableProps) {
                 Match
               </Button>
               <Button 
+                onClick={() => betMutation.mutate({ action: 'fold' })}
+                disabled={betMutation.isPending}
                 variant="destructive"
                 className="px-4 py-2"
                 data-testid="button-fold"
@@ -300,7 +339,7 @@ export function GameTable({ gameId }: GameTableProps) {
                 Fold
               </Button>
             </div>
-          ) : (
+          ) : (game.state as string) === 'hitting_staying' ? (
             <div className="flex justify-center space-x-2">
               <Button 
                 onClick={() => hitMutation.mutate()}
@@ -322,6 +361,10 @@ export function GameTable({ gameId }: GameTableProps) {
                 <TrendingDown className="mr-1" size={14} />
                 Stay
               </Button>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              {(game.state as string) === 'finished' ? 'Game Over' : 'Waiting...'}
             </div>
           )}
         </div>
@@ -346,16 +389,28 @@ export function GameTable({ gameId }: GameTableProps) {
             </div>
           </div>
           
-          {/* Player Cards - Smaller */}
-          <div className="flex justify-center space-x-2">
-            {player1Hand.map((card, index) => (
-              <div key={index} className="scale-75">
-                <PlayingCard 
-                  card={card}
-                  data-testid={`player-card-${index}`}
-                />
+          {/* Player Card Stack and Hand */}
+          <div className="flex items-center justify-center space-x-4">
+            {/* Player Cards - Smaller */}
+            <div className="flex justify-center space-x-2">
+              {player1Hand.map((card, index) => (
+                <div key={index} className="scale-75">
+                  <PlayingCard 
+                    card={card}
+                    data-testid={`player-card-${index}`}
+                  />
+                </div>
+              ))}
+            </div>
+            
+            <div className="text-center">
+              <div className="w-12 h-16 bg-gradient-to-br from-green-600 to-green-800 rounded-lg border-2 border-green-400 flex items-center justify-center">
+                <span className="text-white text-xs font-bold">
+                  {((currentUser as any)?.id === game.player1Id ? player1Cards.length : player2Cards.length)}
+                </span>
               </div>
-            ))}
+              <div className="text-xs text-muted-foreground mt-1">Your Cards</div>
+            </div>
           </div>
         </div>
       </div>
