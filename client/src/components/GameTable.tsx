@@ -40,7 +40,7 @@ export function GameTable({ gameId }: GameTableProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: game, isLoading } = useQuery({
+  const { data: game = {}, isLoading } = useQuery({
     queryKey: ['/api/games', gameId],
     refetchInterval: 2000, // Poll every 2 seconds for real-time updates
   });
@@ -134,188 +134,187 @@ export function GameTable({ gameId }: GameTableProps) {
   const player2Value = calculateHandValue(player2Hand.filter(c => c.faceUp));
 
   return (
-    <div className="bg-card backdrop-blur-xl border border-border rounded-xl game-table h-full flex flex-col">
-      {/* Game Header */}
-      <div className="p-6 border-b border-border">
+    <div className="bg-card backdrop-blur-xl border border-border rounded-xl game-table min-h-[600px] max-h-screen flex flex-col overflow-hidden">
+      {/* Compact Game Header */}
+      <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <h2 className="text-xl font-bold" data-testid="game-title">Game Table</h2>
-            <div className="flex items-center space-x-2 bg-primary/10 px-3 py-1 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full pulse-ring"></div>
-              <span className="text-sm text-primary font-medium">Live Game</span>
+          <div className="flex items-center space-x-3">
+            <h2 className="text-lg font-bold" data-testid="game-title">Game Table</h2>
+            <div className="flex items-center space-x-2 bg-primary/10 px-2 py-1 rounded">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full pulse-ring"></div>
+              <span className="text-xs text-primary font-medium">Live</span>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             <div className="text-center">
-              <div className="text-xs text-muted-foreground">Current Pot</div>
-              <div className="text-lg font-bold text-accent" data-testid="pot-amount">
-                ${game.pot}
+              <div className="text-xs text-muted-foreground">Pot</div>
+              <div className="text-sm font-bold text-accent" data-testid="pot-amount">
+                ${game.pot || 0}
               </div>
             </div>
             <Button variant="destructive" size="sm" data-testid="button-leave-game">
-              <Flag className="mr-2" size={16} />
-              Leave Game
+              <Flag className="mr-1" size={14} />
+              Leave
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Game Board */}
-      <div className="flex-1 p-6 flex flex-col justify-between">
-        {/* Opponent Area */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center space-x-3 bg-muted/20 px-4 py-2 rounded-lg mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-secondary to-accent rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-semibold">
-                {game.player2?.firstName?.[0] || 'P'}
+      {/* Compact Game Board - Stacked Layout */}
+      <div className="flex-1 p-4 flex flex-col justify-between min-h-0">
+        {/* Opponent Area - Compact */}
+        <div className="text-center mb-4">
+          <div className="inline-flex items-center space-x-2 bg-muted/20 px-3 py-1.5 rounded mb-2">
+            <div className="w-6 h-6 bg-gradient-to-br from-secondary to-accent rounded-full flex items-center justify-center">
+              <span className="text-white text-xs font-semibold">
+                {(game.player2 as any)?.firstName?.[0] || 'P'}
               </span>
             </div>
             <div>
-              <div className="font-semibold" data-testid="opponent-name">
-                {game.player2?.firstName || 'Opponent'}
+              <div className="text-sm font-semibold" data-testid="opponent-name">
+                {(game.player2 as any)?.firstName || 'Opponent'}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {game.state === 'betting' ? 'Betting...' : 'Playing...'}
-              </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Value: <span className="text-foreground font-semibold" data-testid="opponent-hand-value">
+                {player2Value}{player2Hand.some(c => !c.faceUp) ? '+?' : ''}
+              </span>
             </div>
           </div>
           
-          {/* Opponent Cards */}
-          <div className="flex justify-center space-x-3 mb-4">
+          {/* Opponent Cards - Smaller */}
+          <div className="flex justify-center space-x-2 mb-2">
             {player2Hand.map((card, index) => (
-              <PlayingCard 
-                key={index} 
-                card={card} 
-                data-testid={`opponent-card-${index}`}
-              />
+              <div key={index} className="scale-75">
+                <PlayingCard 
+                  card={card} 
+                  data-testid={`opponent-card-${index}`}
+                />
+              </div>
             ))}
-          </div>
-          
-          {/* Opponent Stats */}
-          <div className="text-sm text-muted-foreground">
-            Hand Value: <span className="text-foreground font-semibold" data-testid="opponent-hand-value">
-              {player2Value}{player2Hand.some(c => !c.faceUp) ? '+?' : ''}
-            </span>
           </div>
         </div>
 
-        {/* Center Area: Betting & Actions */}
-        <div className="text-center py-8">
-          {/* Pot and Chips */}
-          <div className="flex justify-center space-x-4 mb-6">
-            {game.pot > 0 && (
+        {/* Center Area: Betting & Actions - Compact */}
+        <div className="text-center py-4">
+          {/* Pot and Chips - Compact */}
+          <div className="flex justify-center space-x-2 mb-3">
+            {(game.pot as number) > 0 && (
               <>
-                <div className="chip">$50</div>
-                <div className="chip">$100</div>
-                <div className="chip">$250</div>
+                <div className="chip text-xs">$50</div>
+                <div className="chip text-xs">$100</div>
+                <div className="chip text-xs">$250</div>
               </>
             )}
           </div>
           
           {/* Current Phase */}
-          <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4">
-            <div className="text-sm text-muted-foreground mb-1">Current Phase</div>
-            <div className="text-lg font-bold text-primary capitalize" data-testid="game-phase">
-              {game.state.replace('_', ' ')}
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-3">
+            <div className="text-xs text-muted-foreground mb-1">Current Phase</div>
+            <div className="text-sm font-bold text-primary capitalize" data-testid="game-phase">
+              {(game.state as string)?.replace('_', ' ') || 'Loading...'}
             </div>
-            <div className="text-sm text-muted-foreground mt-1">
-              {game.state === 'betting' ? 'Place your bets' : 'Hit or Stay'}
+            <div className="text-xs text-muted-foreground mt-1">
+              {(game.state as string) === 'betting' ? 'Place your bets' : 'Hit or Stay'}
             </div>
           </div>
 
-          {/* Action Buttons */}
-          {game.state === 'betting' ? (
-            <div className="flex justify-center space-x-3">
+          {/* Action Buttons - Compact */}
+          {(game.state as string) === 'betting' ? (
+            <div className="flex justify-center space-x-2">
               <Button 
                 onClick={() => betMutation.mutate(betAmount)}
                 disabled={betMutation.isPending}
-                className="bg-secondary hover:bg-secondary/90 text-secondary-foreground px-6 py-3 shine-effect"
+                className="bg-secondary hover:bg-secondary/90 text-secondary-foreground px-4 py-2 shine-effect"
                 data-testid="button-raise"
+                size="sm"
               >
-                <TrendingUp className="mr-2" size={16} />
+                <TrendingUp className="mr-1" size={14} />
                 Raise ${betAmount}
               </Button>
               <Button 
-                onClick={() => betMutation.mutate(game.player1Bet)}
+                onClick={() => betMutation.mutate((game.player1Bet as number) || 0)}
                 disabled={betMutation.isPending}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground px-6 py-3 shine-effect"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground px-4 py-2 shine-effect"
                 data-testid="button-match"
+                size="sm"
               >
-                <TrendingDown className="mr-2" size={16} />
+                <TrendingDown className="mr-1" size={14} />
                 Match
               </Button>
               <Button 
                 variant="destructive"
-                className="px-6 py-3"
+                className="px-4 py-2"
                 data-testid="button-fold"
+                size="sm"
               >
-                <Flag className="mr-2" size={16} />
+                <Flag className="mr-1" size={14} />
                 Fold
               </Button>
             </div>
           ) : (
-            <div className="flex justify-center space-x-3">
+            <div className="flex justify-center space-x-2">
               <Button 
                 onClick={() => hitMutation.mutate()}
                 disabled={hitMutation.isPending}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 shine-effect"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 shine-effect"
                 data-testid="button-hit"
+                size="sm"
               >
-                <TrendingUp className="mr-2" size={16} />
+                <TrendingUp className="mr-1" size={14} />
                 Hit
               </Button>
               <Button 
                 onClick={() => stayMutation.mutate()}
                 disabled={stayMutation.isPending}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground px-6 py-3 shine-effect"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground px-4 py-2 shine-effect"
                 data-testid="button-stay"
+                size="sm"
               >
-                <TrendingDown className="mr-2" size={16} />
+                <TrendingDown className="mr-1" size={14} />
                 Stay
               </Button>
             </div>
           )}
         </div>
 
-        {/* Player Area */}
+        {/* Player Area - Compact */}
         <div className="text-center">
-          {/* Player Stats */}
-          <div className="text-sm text-muted-foreground mb-4">
-            Hand Value: <span className="text-foreground font-semibold" data-testid="player-hand-value">
-              {calculateHandValue(player1Hand)}
-            </span>
-          </div>
-          
-          {/* Player Cards */}
-          <div className="flex justify-center space-x-3 mb-4">
-            {player1Hand.map((card, index) => (
-              <PlayingCard 
-                key={index} 
-                card={card}
-                data-testid={`player-card-${index}`}
-              />
-            ))}
-          </div>
-          
-          <div className="inline-flex items-center space-x-3 bg-muted/20 px-4 py-2 rounded-lg">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-semibold">
-                {game.player1?.firstName?.[0] || 'Y'}
+          <div className="inline-flex items-center space-x-2 bg-muted/20 px-3 py-1.5 rounded mb-2">
+            <div className="w-6 h-6 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
+              <span className="text-white text-xs font-semibold">
+                {(game.player1 as any)?.firstName?.[0] || 'Y'}
               </span>
             </div>
             <div>
-              <div className="font-semibold" data-testid="player-name">
-                You ({game.player1?.firstName || 'Player'})
+              <div className="text-sm font-semibold" data-testid="player-name">
+                You ({(game.player1 as any)?.firstName || 'Player'})
               </div>
-              <div className="text-xs text-accent">Your turn</div>
             </div>
+            <div className="text-xs text-muted-foreground">
+              Value: <span className="text-foreground font-semibold" data-testid="player-hand-value">
+                {calculateHandValue(player1Hand)}
+              </span>
+            </div>
+          </div>
+          
+          {/* Player Cards - Smaller */}
+          <div className="flex justify-center space-x-2">
+            {player1Hand.map((card, index) => (
+              <div key={index} className="scale-75">
+                <PlayingCard 
+                  card={card}
+                  data-testid={`player-card-${index}`}
+                />
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Betting Controls */}
-      {game.state === 'betting' && (
-        <div className="p-6 border-t border-border bg-muted/10">
+      {/* Betting Controls - Compact */}
+      {(game.state as string) === 'betting' && (
+        <div className="p-4 border-t border-border bg-muted/10">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <label className="text-sm font-medium">Bet Amount:</label>

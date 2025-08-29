@@ -20,7 +20,7 @@ export function OnlinePlayersList() {
   const { data: onlineUsers = [], isLoading } = useQuery({
     queryKey: ['/api/users/online'],
     refetchInterval: 5000, // Refresh every 5 seconds
-  });
+  }) as { data: any[], isLoading: boolean };
 
   const challengeMutation = useMutation({
     mutationFn: async (data: any) => {

@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function Home() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user = {}, isLoading: authLoading } = useAuth() as { user: any, isLoading: boolean };
   const { toast } = useToast();
   const [gameSettings, setGameSettings] = useState({
     numDecks: 1,
@@ -23,7 +23,7 @@ export default function Home() {
   const { data: activeGame } = useQuery({
     queryKey: ['/api/games/active'],
     refetchInterval: 5000,
-  });
+  }) as { data: any };
 
   const logoutMutation = useMutation({
     mutationFn: async () => {

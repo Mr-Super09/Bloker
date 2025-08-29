@@ -183,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Initialize game
-      await initializeGame(game.id, game.numDecks);
+      await initializeGame(game.id, game.numDecks || 1);
       
       res.json({ challenge, game });
     } catch (error) {
@@ -378,8 +378,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updates.state = 'finished';
           
           // Update player stats
-          await storage.updateUserStats(game.player1Id, winnerId === game.player1Id, winnerId === game.player1Id ? game.pot : 0);
-          await storage.updateUserStats(game.player2Id!, winnerId === game.player2Id, winnerId === game.player2Id ? game.pot : 0);
+          await storage.updateUserStats(game.player1Id, winnerId === game.player1Id, winnerId === game.player1Id ? (game.pot || 0) : 0);
+          await storage.updateUserStats(game.player2Id!, winnerId === game.player2Id, winnerId === game.player2Id ? (game.pot || 0) : 0);
         }
       }
       

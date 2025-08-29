@@ -14,7 +14,7 @@ import {
   type Card,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, asc } from "drizzle-orm";
+import { eq, and, or, desc, asc, ne } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -59,7 +59,10 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          ...userData,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
           updatedAt: new Date(),
         },
       })
@@ -68,9 +71,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOnlineUsers(excludeUserId?: string): Promise<User[]> {
-    const query = db.select().from(users).where(eq(users.isOnline, true));
+    let query = db.select().from(users).where(eq(users.isOnline, true));
     if (excludeUserId) {
-      query.where(and(eq(users.isOnline, true), eq(users.id, excludeUserId)));
+      query = db.select().from(users).where(and(eq(users.isOnline, true), ne(users.id, excludeUserId)));
     }
     return await query.orderBy(asc(users.lastActive));
   }
@@ -93,10 +96,10 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(users)
       .set({
-        wins: won ? user.wins + 1 : user.wins,
-        losses: won ? user.losses : user.losses + 1,
-        totalWinnings: user.totalWinnings + winnings,
-        credits: user.credits + winnings,
+        wins: won ? (user.wins || 0) + 1 : (user.wins || 0),
+        losses: won ? (user.losses || 0) : (user.losses || 0) + 1,
+        totalWinnings: (user.totalWinnings || 0) + winnings,
+        credits: (user.credits || 2500) + winnings,
         updatedAt: new Date()
       })
       .where(eq(users.id, userId));
@@ -172,14 +175,8 @@ export class DatabaseStorage implements IStorage {
 
   async getChallengesForUser(userId: string): Promise<any[]> {
     const challengesList = await db
-      .select({
-        challenge: challenges,
-        challenger: users,
-        challenged: users,
-      })
+      .select()
       .from(challenges)
-      .leftJoin(users, eq(challenges.challengerId, users.id))
-      .leftJoin(users, eq(challenges.challengedId, users.id))
       .where(
         and(
           or(eq(challenges.challengerId, userId), eq(challenges.challengedId, userId)),
@@ -188,11 +185,19 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(challenges.createdAt));
 
-    return challengesList.map(row => ({
-      ...row.challenge,
-      challenger: row.challenger,
-      challenged: row.challenged,
-    }));
+    // Get user details separately
+    const challengesWithUsers = [];
+    for (const challenge of challengesList) {
+      const challenger = await this.getUser(challenge.challengerId);
+      const challenged = await this.getUser(challenge.challengedId);
+      challengesWithUsers.push({
+        ...challenge,
+        challenger,
+        challenged,
+      });
+    }
+
+    return challengesWithUsers;
   }
 
   async updateChallenge(id: string, updates: Partial<Challenge>): Promise<Challenge> {
