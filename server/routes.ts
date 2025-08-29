@@ -490,6 +490,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not a player in this game" });
       }
       
+      // Check if player has already busted
+      if ((isPlayer1 && game.player1Busted) || (isPlayer2 && game.player2Busted)) {
+        return res.status(400).json({ message: "You have busted and cannot take any more actions." });
+      }
+      
+      if (game.state !== 'hitting_staying') {
+        return res.status(400).json({ message: "Game is not in hitting/staying phase" });
+      }
+      
       const updates: any = {};
       
       if (isPlayer1) {
@@ -567,9 +576,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.player1Cards = player1Cards;
         updates.player1Hand = player1Hand;
         
-        // Check for bust
+        // Check for bust and notify only the player who busted
         if (calculateHandValue(player1Hand) > 21) {
           updates.player1Busted = true;
+          // Only inform the busted player privately
+          const updatedGame = await storage.updateGame(gameId, updates);
+          return res.status(200).json({ ...updatedGame, message: "You busted! You cannot take any more actions." });
         }
       } else {
         // Draw from player 2's personal card stack
@@ -646,9 +658,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.player2Cards = player2Cards;
         updates.player2Hand = player2Hand;
         
-        // Check for bust
+        // Check for bust and notify only the player who busted
         if (calculateHandValue(player2Hand) > 21) {
           updates.player2Busted = true;
+          // Only inform the busted player privately
+          const updatedGame = await storage.updateGame(gameId, updates);
+          return res.status(200).json({ ...updatedGame, message: "You busted! You cannot take any more actions." });
         }
       }
       
@@ -677,6 +692,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not a player in this game" });
       }
       
+      // Check if player has already busted
+      if ((isPlayer1 && game.player1Busted) || (isPlayer2 && game.player2Busted)) {
+        return res.status(400).json({ message: "You have busted and cannot take any more actions." });
+      }
+      
+      if (game.state !== 'hitting_staying') {
+        return res.status(400).json({ message: "Game is not in hitting/staying phase" });
+      }
+      
       const updates: any = {};
       
       if (isPlayer1) {
@@ -685,8 +709,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.player2Ready = true;
       }
       
-      // Check if both players are ready to determine winner
-      if ((isPlayer1 && game.player2Ready) || (isPlayer2 && game.player1Ready)) {
+      // Check if both players are ready (stayed or busted) to determine round winner
+      if ((isPlayer1 && game.player2Ready) || (isPlayer2 && game.player1Ready) || (game.player1Busted && game.player2Busted)) {
         const player1Hand: Card[] = Array.isArray(game.player1Hand) 
           ? game.player1Hand 
           : (typeof game.player1Hand === 'string' ? JSON.parse(game.player1Hand) : []);
@@ -697,68 +721,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const player1Value = calculateHandValue(player1Hand);
         const player2Value = calculateHandValue(player2Hand);
         
-        let winnerId = null;
+        let roundWinnerId = null;
         
-        // Determine winner
+        // Determine round winner
         if (game.player1Busted && !game.player2Busted) {
-          winnerId = game.player2Id;
+          roundWinnerId = game.player2Id;
         } else if (game.player2Busted && !game.player1Busted) {
-          winnerId = game.player1Id;
+          roundWinnerId = game.player1Id;
         } else if (!game.player1Busted && !game.player2Busted) {
-          if (player1Value > player2Value) {
-            winnerId = game.player1Id;
-          } else if (player2Value > player1Value) {
-            winnerId = game.player2Id;
+          if (player1Value > player2Value && player1Value <= 21) {
+            roundWinnerId = game.player1Id;
+          } else if (player2Value > player1Value && player2Value <= 21) {
+            roundWinnerId = game.player2Id;
           }
           // Tie case - trigger tiebreaker logic
-          else {
+          else if (player1Value === player2Value && player1Value <= 21) {
             // Both players have same value - conduct tiebreaker
-            const remainingCards: Card[] = Array.isArray(game.remainingCards) 
-              ? game.remainingCards 
-              : (typeof game.remainingCards === 'string' ? JSON.parse(game.remainingCards) : []);
-              
-            const tiebreakerResult = gameLogic.conductTiebreaker(player1Hand, player2Hand, remainingCards);
+            const player1Cards: Card[] = Array.isArray(game.player1Cards) 
+              ? game.player1Cards 
+              : (typeof game.player1Cards === 'string' ? JSON.parse(game.player1Cards) : []);
+            const player2Cards: Card[] = Array.isArray(game.player2Cards) 
+              ? game.player2Cards 
+              : (typeof game.player2Cards === 'string' ? JSON.parse(game.player2Cards) : []);
             
-            if (tiebreakerResult.winner) {
-              winnerId = tiebreakerResult.winner === 'player1' ? game.player1Id : game.player2Id;
-              updates.player1Hand = tiebreakerResult.player1Hand;
-              updates.player2Hand = tiebreakerResult.player2Hand;
-              updates.remainingCards = tiebreakerResult.remainingCards;
-              updates.state = 'tiebreaker';
+            if (player1Cards.length > 0 && player2Cards.length > 0) {
+              const p1TieCard = player1Cards.pop()!;
+              const p2TieCard = player2Cards.pop()!;
               
-              // Add system message about tiebreaker
+              const getCardRank = (card: Card): number => {
+                if (card.value === 'A') return 14;
+                if (card.value === 'K') return 13;
+                if (card.value === 'Q') return 12;
+                if (card.value === 'J') return 11;
+                return parseInt(card.value);
+              };
+              
+              const p1Rank = getCardRank(p1TieCard);
+              const p2Rank = getCardRank(p2TieCard);
+              
+              if (p1Rank > p2Rank) {
+                roundWinnerId = game.player1Id;
+                // Winner gets both tiebreaker cards back
+                player1Cards.unshift(p1TieCard, p2TieCard);
+              } else if (p2Rank > p1Rank) {
+                roundWinnerId = game.player2Id;
+                // Winner gets both tiebreaker cards back
+                player2Cards.unshift(p1TieCard, p2TieCard);
+              } else {
+                // Still tied, put cards back and call it a draw for this round
+                player1Cards.push(p1TieCard);
+                player2Cards.push(p2TieCard);
+                roundWinnerId = null;
+              }
+              
+              updates.player1Cards = JSON.stringify(player1Cards);
+              updates.player2Cards = JSON.stringify(player2Cards);
+              
               await storage.createChatMessage({
                 gameId,
                 userId: null,
-                message: `Tie! Tiebreaker conducted. ${winnerId === game.player1Id ? 'Player 1' : 'Player 2'} wins with higher tiebreaker card!`,
-                isSystemMessage: true,
-              });
-            } else {
-              // Still tied after tiebreaker - could implement multiple rounds or declare draw
-              // For now, let's declare it a draw and split pot
-              updates.state = 'finished';
-              const halfPot = Math.floor((game.pot || 0) / 2);
-              
-              await storage.updateUserStats(game.player1Id, false, halfPot);
-              await storage.updateUserStats(game.player2Id!, false, halfPot);
-              
-              await storage.createChatMessage({
-                gameId,
-                userId: null,
-                message: `Double tie! It's a draw. Pot split equally between players.`,
+                message: roundWinnerId ? `Tiebreaker! ${roundWinnerId === game.player1Id ? 'Player 1' : 'Player 2'} wins the round!` : 'Tiebreaker ended in another tie - round is a draw.',
                 isSystemMessage: true,
               });
             }
           }
+        } else if (game.player1Busted && game.player2Busted) {
+          // Both busted - round is a draw, no winner
+          roundWinnerId = null;
         }
         
-        if (winnerId) {
-          updates.winnerId = winnerId;
+        // Handle round completion
+        if (roundWinnerId) {
+          // Winner takes all cards from this round and the pot
+          const allRoundCards = [...player1Hand, ...player2Hand];
+          const roundPot = (game.pot || 0);
+          
+          // Add cards to winner's pile
+          const winnerCards: Card[] = roundWinnerId === game.player1Id ? 
+            (Array.isArray(game.player1Cards) ? game.player1Cards : JSON.parse(typeof game.player1Cards === 'string' ? game.player1Cards : '[]')) :
+            (Array.isArray(game.player2Cards) ? game.player2Cards : JSON.parse(typeof game.player2Cards === 'string' ? game.player2Cards : '[]'));
+          
+          winnerCards.unshift(...allRoundCards); // Add to bottom of pile
+          
+          if (roundWinnerId === game.player1Id) {
+            updates.player1Cards = JSON.stringify(winnerCards);
+          } else {
+            updates.player2Cards = JSON.stringify(winnerCards);
+          }
+          
+          // Add winnings to winner's credits immediately
+          await storage.updateUserStats(roundWinnerId, false, roundPot);
+          
+          await storage.createChatMessage({
+            gameId,
+            userId: null,
+            message: `${roundWinnerId === game.player1Id ? 'Player 1' : 'Player 2'} wins the round and takes $${roundPot} plus all cards!`,
+            isSystemMessage: true,
+          });
+        } else {
+          // Round was a draw - pot carries over to next round
+          await storage.createChatMessage({
+            gameId,
+            userId: null,
+            message: 'Round ended in a draw. Pot carries over to next round.',
+            isSystemMessage: true,
+          });
+        }
+        
+        // Check if game should end (one player out of cards)
+        const player1Cards: Card[] = Array.isArray(updates.player1Cards || game.player1Cards) 
+          ? (updates.player1Cards || game.player1Cards)
+          : JSON.parse((updates.player1Cards || game.player1Cards) || '[]');
+        const player2Cards: Card[] = Array.isArray(updates.player2Cards || game.player2Cards) 
+          ? (updates.player2Cards || game.player2Cards)
+          : JSON.parse((updates.player2Cards || game.player2Cards) || '[]');
+        
+        if (player1Cards.length === 0 || player2Cards.length === 0) {
+          // Game ends - player with cards wins
+          const gameWinnerId = player1Cards.length > 0 ? game.player1Id : game.player2Id;
+          updates.winnerId = gameWinnerId;
           updates.state = 'finished';
           
-          // Update player stats
-          await storage.updateUserStats(game.player1Id, winnerId === game.player1Id, winnerId === game.player1Id ? (game.pot || 0) : 0);
-          await storage.updateUserStats(game.player2Id!, winnerId === game.player2Id, winnerId === game.player2Id ? (game.pot || 0) : 0);
+          await storage.updateUserStats(game.player1Id, gameWinnerId === game.player1Id, 0);
+          await storage.updateUserStats(game.player2Id!, gameWinnerId === game.player2Id, 0);
+          
+          await storage.createChatMessage({
+            gameId,
+            userId: null,
+            message: `Game Over! ${gameWinnerId === game.player1Id ? 'Player 1' : 'Player 2'} wins by having the last cards!`,
+            isSystemMessage: true,
+          });
+        } else {
+          // Start new round - reset for betting phase
+          updates.state = 'betting';
+          updates.pot = game.pot || 0; // Carry over pot if round was a draw
+          updates.player1Hand = JSON.stringify([]);
+          updates.player2Hand = JSON.stringify([]);
+          updates.player1Bet = 0;
+          updates.player2Bet = 0;
+          updates.player1Ready = false;
+          updates.player2Ready = false;
+          updates.player1Busted = false;
+          updates.player2Busted = false;
+          
+          // Deal new cards for next round
+          const player1CardsForDealing = Array.isArray(updates.player1Cards || game.player1Cards) 
+            ? (updates.player1Cards || game.player1Cards)
+            : JSON.parse((updates.player1Cards || game.player1Cards) || '[]');
+          const player2CardsForDealing = Array.isArray(updates.player2Cards || game.player2Cards) 
+            ? (updates.player2Cards || game.player2Cards)
+            : JSON.parse((updates.player2Cards || game.player2Cards) || '[]');
+          
+          if (player1CardsForDealing.length >= 2 && player2CardsForDealing.length >= 2) {
+            // Deal new initial cards
+            const p1Card1 = player1CardsForDealing.pop()!;
+            const p1Card2 = player1CardsForDealing.pop()!;
+            const p2Card1 = player2CardsForDealing.pop()!;
+            const p2Card2 = player2CardsForDealing.pop()!;
+            
+            p1Card1.faceUp = true;
+            p1Card2.faceUp = false;
+            p2Card1.faceUp = true;
+            p2Card2.faceUp = false;
+            
+            updates.player1Hand = JSON.stringify([p1Card1, p1Card2]);
+            updates.player2Hand = JSON.stringify([p2Card1, p2Card2]);
+            updates.player1Cards = JSON.stringify(player1CardsForDealing);
+            updates.player2Cards = JSON.stringify(player2CardsForDealing);
+            
+            await storage.createChatMessage({
+              gameId,
+              userId: null,
+              message: 'New round begins! Place your bets.',
+              isSystemMessage: true,
+            });
+          }
         }
       }
       
