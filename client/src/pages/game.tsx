@@ -65,7 +65,7 @@ export default function Game() {
 
   // Check if user is part of this game
   useEffect(() => {
-    if (game && game.id && user && game.player1Id !== user.id && game.player2Id !== user.id) {
+    if (game && game.id && user && (user as any).id && game.player1Id !== (user as any).id && game.player2Id !== (user as any).id) {
       toast({
         title: "Access Denied",
         description: "You are not a participant in this game.",

@@ -40,6 +40,29 @@ export function GameTable({ gameId }: GameTableProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { data: currentUser } = useQuery({ queryKey: ['/api/auth/user'] });
+
+  const leaveMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('POST', `/api/games/${gameId}/leave`, {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Left Game",
+        description: "You have left the game",
+      });
+      // Redirect to home page
+      window.location.href = '/';
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: game, isLoading } = useQuery<any>({
     queryKey: ['/api/games', gameId],
     refetchInterval: 2000, // Poll every 2 seconds for real-time updates
@@ -171,9 +194,15 @@ export function GameTable({ gameId }: GameTableProps) {
                 ${game.pot || 0}
               </div>
             </div>
-            <Button variant="destructive" size="sm" data-testid="button-leave-game">
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={() => leaveMutation.mutate()}
+              disabled={leaveMutation.isPending}
+              data-testid="button-leave-game"
+            >
               <Flag className="mr-1" size={14} />
-              Leave
+              {leaveMutation.isPending ? 'Leaving...' : 'Leave'}
             </Button>
           </div>
         </div>
@@ -191,7 +220,7 @@ export function GameTable({ gameId }: GameTableProps) {
             </div>
             <div>
               <div className="text-sm font-semibold" data-testid="opponent-name">
-                {(game.player2 as any)?.firstName || 'Opponent'}
+                {((currentUser as any)?.id === game.player1Id ? (game.player2 as any)?.firstName : (game.player1 as any)?.firstName) || 'Opponent'}
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
@@ -307,7 +336,7 @@ export function GameTable({ gameId }: GameTableProps) {
             </div>
             <div>
               <div className="text-sm font-semibold" data-testid="player-name">
-                You ({(game.player1 as any)?.firstName || 'Player'})
+                You ({((currentUser as any)?.id === game.player1Id ? (game.player1 as any)?.firstName : (game.player2 as any)?.firstName) || 'Player'})
               </div>
             </div>
             <div className="text-xs text-muted-foreground">

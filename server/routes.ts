@@ -542,6 +542,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/games/:id/leave', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const gameId = req.params.id;
+      
+      const game = await storage.getGame(gameId);
+      if (!game) {
+        return res.status(404).json({ message: "Game not found" });
+      }
+      
+      const isPlayer1 = game.player1Id === userId;
+      const isPlayer2 = game.player2Id === userId;
+      
+      if (!isPlayer1 && !isPlayer2) {
+        return res.status(403).json({ message: "Not a player in this game" });
+      }
+      
+      // End the game and declare the other player as winner
+      const winnerId = isPlayer1 ? game.player2Id : game.player1Id;
+      await storage.updateGame(gameId, { 
+        state: 'finished',
+        winnerId: winnerId 
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error leaving game:", error);
+      res.status(500).json({ message: "Failed to leave game" });
+    }
+  });
+
   app.post('/api/games/:id/chat', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
