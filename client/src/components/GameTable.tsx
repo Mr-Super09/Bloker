@@ -193,11 +193,11 @@ export function GameTable({ gameId }: GameTableProps) {
   const currentPlayerHand = isCurrentUserPlayer1 ? player1Hand : player2Hand;
   const opponentHand = isCurrentUserPlayer1 ? player2Hand : player1Hand;
   
-  // Filter opponent's cards - only show face-up cards to opponent
-  const visibleOpponentCards = opponentHand.map(card => ({
-    ...card,
-    faceUp: card.faceUp // Keep face-up status, PlayingCard will handle display
-  }));
+  // Filter opponent's cards - only show face-up cards, hide face-down cards
+  const visibleOpponentCards = opponentHand.filter(card => {
+    // Show face-up cards normally, hide face-down cards completely for opponent  
+    return card.faceUp || ((card.suit as any) === 'hidden' && (card.value as any) === 'hidden');
+  });
   // Parse player card stacks
   const player1Cards: Card[] = (() => {
     try {
@@ -222,7 +222,9 @@ export function GameTable({ gameId }: GameTableProps) {
   })();
   
   const currentPlayerValue = calculateHandValue(currentPlayerHand);
-  const visibleOpponentValue = calculateHandValue(opponentHand.filter(c => c.faceUp));
+  // Only calculate opponent value from face-up cards (visible cards)
+  const visibleOpponentValue = calculateHandValue(opponentHand.filter(c => c.faceUp && (c.suit as any) !== 'hidden'));
+  const hasHiddenOpponentCards = opponentHand.some(c => !c.faceUp || (c.suit as any) === 'hidden');
 
   return (
     <div className="bg-card backdrop-blur-xl border border-border rounded-xl game-table min-h-[600px] max-h-screen flex flex-col overflow-hidden">
@@ -282,7 +284,7 @@ export function GameTable({ gameId }: GameTableProps) {
           <div className="inline-flex items-center space-x-2 bg-muted/20 px-3 py-1.5 rounded mb-2">
             <div className="w-6 h-6 bg-gradient-to-br from-secondary to-accent rounded-full flex items-center justify-center">
               <span className="text-white text-xs font-semibold">
-                {(game.player2 as any)?.firstName?.[0] || 'P'}
+                {(isCurrentUserPlayer1 ? (game.player2 as any)?.firstName?.[0] : (game.player1 as any)?.firstName?.[0]) || 'O'}
               </span>
             </div>
             <div>
@@ -291,8 +293,8 @@ export function GameTable({ gameId }: GameTableProps) {
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
-              Value: <span className="text-foreground font-semibold" data-testid="opponent-hand-value">
-                {visibleOpponentValue}{opponentHand.some(c => !c.faceUp) ? '+?' : ''}
+              Visible: <span className="text-foreground font-semibold" data-testid="opponent-hand-value">
+                {visibleOpponentValue}{hasHiddenOpponentCards ? '+?' : ''}
               </span>
             </div>
           </div>
@@ -308,12 +310,12 @@ export function GameTable({ gameId }: GameTableProps) {
               <div className="text-xs text-muted-foreground mt-1">Cards Left</div>
             </div>
             
-            {/* Opponent Cards - Smaller - Only show what current player should see */}
+            {/* Opponent Cards - Only show face-up cards */}
             <div className="flex justify-center space-x-2">
-              {visibleOpponentCards.map((card, index) => (
+              {opponentHand.map((card, index) => (
                 <div key={index} className="scale-75">
                   <PlayingCard 
-                    card={card} 
+                    card={card.faceUp && (card.suit as any) !== 'hidden' ? card : { ...card, faceUp: false, suit: 'spades' as any, value: 'A' as any }} 
                     data-testid={`opponent-card-${index}`}
                   />
                 </div>
@@ -450,7 +452,7 @@ export function GameTable({ gameId }: GameTableProps) {
           <div className="inline-flex items-center space-x-2 bg-muted/20 px-3 py-1.5 rounded mb-2">
             <div className="w-6 h-6 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
               <span className="text-white text-xs font-semibold">
-                {(game.player1 as any)?.firstName?.[0] || 'Y'}
+                {(isCurrentUserPlayer1 ? (game.player1 as any)?.firstName?.[0] : (game.player2 as any)?.firstName?.[0]) || 'Y'}
               </span>
             </div>
             <div>

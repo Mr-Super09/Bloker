@@ -106,7 +106,7 @@ async function moveToHitStayPhase(gameId: string): Promise<void> {
       ? game.player2Hand 
       : (typeof game.player2Hand === 'string' ? JSON.parse(game.player2Hand) : []);
       
-    // Reveal face down cards to players (for peek)
+    // Reveal face down cards to players
     player1Hand.forEach(card => { if (!card.faceUp) card.faceUp = true; });
     player2Hand.forEach(card => { if (!card.faceUp) card.faceUp = true; });
     
@@ -115,6 +115,13 @@ async function moveToHitStayPhase(gameId: string): Promise<void> {
   }
   
   await storage.updateGame(gameId, updates);
+  
+  await storage.createChatMessage({
+    gameId,
+    userId: null,
+    message: 'Betting complete! You can now see your face-down cards. Choose to hit or stay.',
+    isSystemMessage: true,
+  });
 }
 
 async function startNextRound(gameId: string, roundWinnerId: string): Promise<void> {
@@ -303,7 +310,11 @@ async function startTiebreaker(gameId: string): Promise<void> {
   
   // Tiebreaker logic would go here - for now, just start next round
   // In a full implementation, players would draw face-down cards and compare ranks
-  await startNextRound(gameId, null);
+  // For tiebreaker, get the game again to access player IDs
+  const gameForTiebreaker = await storage.getGame(gameId);
+  if (gameForTiebreaker) {
+    await startNextRound(gameId, gameForTiebreaker.player1Id!); // Default to player1 for tiebreaker
+  }
 }
 
 async function checkExpiredDeadlines(): Promise<void> {
@@ -605,11 +616,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/games/:id', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const game = await storage.getGameWithPlayers(req.params.id);
       if (!game) {
         return res.status(404).json({ message: "Game not found" });
       }
-      res.json(game);
+      
+      // Filter card visibility based on current user and game state
+      const isPlayer1 = game.player1Id === userId;
+      const isPlayer2 = game.player2Id === userId;
+      
+      if (!isPlayer1 && !isPlayer2) {
+        return res.status(403).json({ message: "Not a player in this game" });
+      }
+      
+      // Parse hands safely
+      const player1Hand: Card[] = Array.isArray(game.player1Hand) 
+        ? game.player1Hand 
+        : (typeof game.player1Hand === 'string' ? JSON.parse(game.player1Hand || '[]') : []);
+      const player2Hand: Card[] = Array.isArray(game.player2Hand) 
+        ? game.player2Hand 
+        : (typeof game.player2Hand === 'string' ? JSON.parse(game.player2Hand || '[]') : []);
+      
+      // Create filtered game object
+      const filteredGame = { ...game };
+      
+      if (isPlayer1) {
+        // Player 1's view: see all own cards, only opponent's face-up cards
+        filteredGame.player1Hand = JSON.stringify(player1Hand);
+        filteredGame.player2Hand = JSON.stringify(
+          player2Hand.map(card => ({ 
+            ...card, 
+            // Hide opponent's face-down cards by not revealing suit/value
+            suit: card.faceUp ? card.suit : 'hidden' as any,
+            value: card.faceUp ? card.value : 'hidden' as any
+          }))
+        );
+      } else {
+        // Player 2's view: see all own cards, only opponent's face-up cards  
+        filteredGame.player2Hand = JSON.stringify(player2Hand);
+        filteredGame.player1Hand = JSON.stringify(
+          player1Hand.map(card => ({ 
+            ...card, 
+            // Hide opponent's face-down cards by not revealing suit/value
+            suit: card.faceUp ? card.suit : 'hidden' as any,
+            value: card.faceUp ? card.value : 'hidden' as any
+          }))
+        );
+      }
+      
+      res.json(filteredGame);
     } catch (error) {
       console.error("Error fetching game:", error);
       res.status(500).json({ message: "Failed to fetch game" });
@@ -785,12 +841,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (finalPlayer1Bet === finalPlayer2Bet) {
           updates.state = 'hitting_staying';
           
-          // If allowPeek is enabled, players can now see their face-down cards
-          if (game.allowPeek) {
-            await moveToHitStayPhase(gameId);
-            const updatedGame = await storage.updateGame(gameId, updates);
-            return res.json(updatedGame);
-          }
+          // After betting, players can see their own face-down cards
+          await moveToHitStayPhase(gameId);
+          const updatedGame = await storage.updateGame(gameId, updates);
+          return res.json(updatedGame);
         }
         
       } else if (action === 'raise') {
