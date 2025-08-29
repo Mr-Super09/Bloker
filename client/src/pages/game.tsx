@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function Game() {
-  const { gameId } = useParams<{ gameId: string }>();
+  const { id: gameId } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();

@@ -117,22 +117,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGameWithPlayers(id: string): Promise<any> {
-    const [game] = await db
-      .select({
-        game: games,
-        player1: users,
-        player2: users,
-      })
-      .from(games)
-      .leftJoin(users, eq(games.player1Id, users.id))
-      .leftJoin(users, eq(games.player2Id, users.id))
-      .where(eq(games.id, id));
+    const game = await db.select().from(games).where(eq(games.id, id));
+    if (!game.length) return undefined;
     
-    return game ? {
-      ...game.game,
-      player1: game.player1,
-      player2: game.player2,
-    } : undefined;
+    const gameData = game[0];
+    
+    // Get player data separately to avoid join conflicts
+    const player1 = gameData.player1Id ? await this.getUser(gameData.player1Id) : null;
+    const player2 = gameData.player2Id ? await this.getUser(gameData.player2Id) : null;
+    
+    return {
+      ...gameData,
+      player1,
+      player2,
+    };
   }
 
   async updateGame(id: string, updates: Partial<Game>): Promise<Game> {
@@ -151,7 +149,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           or(eq(games.player1Id, userId), eq(games.player2Id, userId)),
-          eq(games.state, 'finished')
+          ne(games.state, 'finished')
         )
       )
       .orderBy(desc(games.updatedAt));
