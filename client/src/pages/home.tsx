@@ -47,11 +47,37 @@ export default function Home() {
   // Handle page unload to set user offline
   useEffect(() => {
     const handleBeforeUnload = () => {
-      navigator.sendBeacon('/api/users/offline', JSON.stringify({}));
+      // Try to mark user as offline when leaving the page
+      try {
+        // Use fetch with keepalive for better reliability than sendBeacon
+        fetch('/api/users/offline', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+          keepalive: true // Ensures request continues even if page unloads
+        }).catch(() => {
+          // Fallback to sendBeacon if fetch fails
+          navigator.sendBeacon('/api/users/offline', JSON.stringify({}));
+        });
+      } catch {
+        // Final fallback
+        navigator.sendBeacon('/api/users/offline', JSON.stringify({}));
+      }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        handleBeforeUnload();
+      }
+    });
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('visibilitychange', handleBeforeUnload);
+    };
   }, []);
 
   if (authLoading) {

@@ -133,6 +133,15 @@ async function checkExpiredVotingDeadlines(): Promise<void> {
   }
 }
 
+async function cleanupStaleOnlineUsers(): Promise<void> {
+  try {
+    // Mark users as offline if they haven't been active for more than 2 minutes
+    await storage.cleanupStaleOnlineUsers(120000); // 2 minutes in milliseconds
+  } catch (error) {
+    console.error("Error cleaning up stale online users:", error);
+  }
+}
+
 async function initializeGame(gameId: string, numDecks: number = 1): Promise<void> {
   // Create and shuffle deck(s)
   let allCards: Card[] = [];
@@ -172,6 +181,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Start background task to check expired voting deadlines
   setInterval(checkExpiredVotingDeadlines, 5000); // Check every 5 seconds
+  
+  // Start background task to clean up stale online statuses
+  setInterval(cleanupStaleOnlineUsers, 30000); // Check every 30 seconds
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -203,14 +215,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/users/offline', isAuthenticated, async (req: any, res) => {
+  app.post('/api/users/offline', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      await storage.updateUserOnlineStatus(userId, false);
+      // Handle both authenticated and beacon requests
+      let userId;
+      if (req.user && req.user.claims) {
+        userId = req.user.claims.sub;
+      } else if (req.session && req.session.user) {
+        userId = req.session.user.id;
+      } else {
+        // For beacon requests without proper auth, try to get from session
+        const sessionCookie = req.headers.cookie;
+        if (sessionCookie) {
+          // Extract session from cookie to get user ID
+          const sessionData = req.session;
+          if (sessionData && sessionData.passport && sessionData.passport.user) {
+            userId = sessionData.passport.user.id;
+          }
+        }
+      }
+      
+      if (userId) {
+        await storage.updateUserOnlineStatus(userId, false);
+      }
       res.json({ success: true });
     } catch (error) {
       console.error("Error updating user status:", error);
-      res.status(500).json({ message: "Failed to update status" });
+      res.json({ success: true }); // Still return success to avoid client errors
     }
   });
 

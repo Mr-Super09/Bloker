@@ -24,6 +24,7 @@ export interface IStorage {
   getOnlineUsers(excludeUserId?: string): Promise<User[]>;
   updateUserOnlineStatus(userId: string, isOnline: boolean): Promise<void>;
   updateUserStats(userId: string, won: boolean, winnings: number): Promise<void>;
+  cleanupStaleOnlineUsers(maxInactiveMs: number): Promise<void>;
 
   // Game operations
   createGame(game: InsertGame): Promise<Game>;
@@ -103,6 +104,21 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date()
       })
       .where(eq(users.id, userId));
+  }
+
+  async cleanupStaleOnlineUsers(maxInactiveMs: number): Promise<void> {
+    const cutoffTime = new Date(Date.now() - maxInactiveMs);
+    
+    await db
+      .update(users)
+      .set({ 
+        isOnline: false,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(users.isOnline, true),
+        lt(users.lastActive, cutoffTime)
+      ));
   }
 
   // Game operations
