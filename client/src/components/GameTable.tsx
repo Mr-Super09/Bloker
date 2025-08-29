@@ -172,6 +172,17 @@ export function GameTable({ gameId }: GameTableProps) {
       return [];
     }
   })();
+
+  // Determine which player is the current user
+  const isCurrentUserPlayer1 = (currentUser as any)?.id === game.player1Id;
+  const currentPlayerHand = isCurrentUserPlayer1 ? player1Hand : player2Hand;
+  const opponentHand = isCurrentUserPlayer1 ? player2Hand : player1Hand;
+  
+  // Filter opponent's cards - only show face-up cards to opponent
+  const visibleOpponentCards = opponentHand.map(card => ({
+    ...card,
+    faceUp: card.faceUp // Keep face-up status, PlayingCard will handle display
+  }));
   // Parse player card stacks
   const player1Cards: Card[] = (() => {
     try {
@@ -195,8 +206,8 @@ export function GameTable({ gameId }: GameTableProps) {
     }
   })();
   
-  const player1Value = calculateHandValue(player1Hand.filter(c => c.faceUp));
-  const player2Value = calculateHandValue(player2Hand.filter(c => c.faceUp));
+  const currentPlayerValue = calculateHandValue(currentPlayerHand);
+  const visibleOpponentValue = calculateHandValue(opponentHand.filter(c => c.faceUp));
 
   return (
     <div className="bg-card backdrop-blur-xl border border-border rounded-xl game-table min-h-[600px] max-h-screen flex flex-col overflow-hidden">
@@ -261,12 +272,12 @@ export function GameTable({ gameId }: GameTableProps) {
             </div>
             <div>
               <div className="text-sm font-semibold" data-testid="opponent-name">
-                {((currentUser as any)?.id === game.player1Id ? (game.player2 as any)?.firstName : (game.player1 as any)?.firstName) || 'Opponent'}
+                {(isCurrentUserPlayer1 ? (game.player2 as any)?.firstName : (game.player1 as any)?.firstName) || 'Opponent'}
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
               Value: <span className="text-foreground font-semibold" data-testid="opponent-hand-value">
-                {player2Value}{player2Hand.some(c => !c.faceUp) ? '+?' : ''}
+                {visibleOpponentValue}{opponentHand.some(c => !c.faceUp) ? '+?' : ''}
               </span>
             </div>
           </div>
@@ -276,15 +287,15 @@ export function GameTable({ gameId }: GameTableProps) {
             <div className="text-center">
               <div className="w-12 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg border-2 border-blue-400 flex items-center justify-center">
                 <span className="text-white text-xs font-bold">
-                  {((currentUser as any)?.id === game.player1Id ? player2Cards.length : player1Cards.length)}
+                  {(isCurrentUserPlayer1 ? player2Cards.length : player1Cards.length)}
                 </span>
               </div>
               <div className="text-xs text-muted-foreground mt-1">Cards Left</div>
             </div>
             
-            {/* Opponent Cards - Smaller */}
+            {/* Opponent Cards - Smaller - Only show what current player should see */}
             <div className="flex justify-center space-x-2">
-              {player2Hand.map((card, index) => (
+              {visibleOpponentCards.map((card, index) => (
                 <div key={index} className="scale-75">
                   <PlayingCard 
                     card={card} 
@@ -397,21 +408,21 @@ export function GameTable({ gameId }: GameTableProps) {
             </div>
             <div>
               <div className="text-sm font-semibold" data-testid="player-name">
-                You ({((currentUser as any)?.id === game.player1Id ? (game.player1 as any)?.firstName : (game.player2 as any)?.firstName) || 'Player'})
+                You ({(isCurrentUserPlayer1 ? (game.player1 as any)?.firstName : (game.player2 as any)?.firstName) || 'Player'})
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
               Value: <span className="text-foreground font-semibold" data-testid="player-hand-value">
-                {calculateHandValue(player1Hand)}
+                {currentPlayerValue}
               </span>
             </div>
           </div>
           
           {/* Player Card Stack and Hand */}
           <div className="flex items-center justify-center space-x-4">
-            {/* Player Cards - Smaller */}
+            {/* Player Cards - Smaller - Show all own cards */}
             <div className="flex justify-center space-x-2">
-              {player1Hand.map((card, index) => (
+              {currentPlayerHand.map((card, index) => (
                 <div key={index} className="scale-75">
                   <PlayingCard 
                     card={card}
@@ -424,7 +435,7 @@ export function GameTable({ gameId }: GameTableProps) {
             <div className="text-center">
               <div className="w-12 h-16 bg-gradient-to-br from-green-600 to-green-800 rounded-lg border-2 border-green-400 flex items-center justify-center">
                 <span className="text-white text-xs font-bold">
-                  {((currentUser as any)?.id === game.player1Id ? player1Cards.length : player2Cards.length)}
+                  {(isCurrentUserPlayer1 ? player1Cards.length : player2Cards.length)}
                 </span>
               </div>
               <div className="text-xs text-muted-foreground mt-1">Your Cards</div>
