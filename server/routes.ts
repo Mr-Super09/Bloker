@@ -117,12 +117,12 @@ async function checkExpiredVotingDeadlines(): Promise<void> {
       
       // Use available votes or defaults
       const finalPlayer1Vote = {
-        numDecks: player1Vote.numDecks || 1,
-        allowPeek: player1Vote.allowPeek ?? true
+        numDecks: (player1Vote as any).numDecks || 1,
+        allowPeek: (player1Vote as any).allowPeek ?? true
       };
       const finalPlayer2Vote = {
-        numDecks: player2Vote.numDecks || 1,
-        allowPeek: player2Vote.allowPeek ?? true
+        numDecks: (player2Vote as any).numDecks || 1,
+        allowPeek: (player2Vote as any).allowPeek ?? true
       };
       
       await finalizeGameSettings(game.id, finalPlayer1Vote, finalPlayer2Vote);
