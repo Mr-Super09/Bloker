@@ -263,6 +263,33 @@ export class DatabaseStorage implements IStorage {
       );
     return expiredGames;
   }
+
+  async getGamesWithExpiredBetting(): Promise<Game[]> {
+    const expiredGames = await db
+      .select()
+      .from(games)
+      .where(
+        and(
+          eq(games.state, 'betting'),
+          lt(games.bettingDeadline, new Date())
+        )
+      );
+    return expiredGames;
+  }
+
+  async getFinishedGamesForAutoLeave(): Promise<Game[]> {
+    const fiveSecondsAgo = new Date(Date.now() - 5000);
+    const finishedGames = await db
+      .select()
+      .from(games)
+      .where(
+        and(
+          eq(games.state, 'finished'),
+          lt(games.gameFinishedAt, fiveSecondsAgo)
+        )
+      );
+    return finishedGames;
+  }
 }
 
 export const storage = new DatabaseStorage();

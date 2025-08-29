@@ -91,12 +91,227 @@ async function finalizeGameSettings(gameId: string, player1Vote: any, player2Vot
   await initializeGame(gameId, finalNumDecks);
 }
 
-async function checkExpiredVotingDeadlines(): Promise<void> {
-  try {
-    // Get all games in setting_up state with expired voting deadlines
-    const expiredGames = await storage.getGamesWithExpiredVoting();
+async function moveToHitStayPhase(gameId: string): Promise<void> {
+  const game = await storage.getGame(gameId);
+  if (!game) return;
+  
+  const updates: any = { state: 'hitting_staying' };
+  
+  // If allowPeek is enabled, players can now see their face-down cards
+  if (game.allowPeek) {
+    const player1Hand: Card[] = Array.isArray(game.player1Hand) 
+      ? game.player1Hand 
+      : (typeof game.player1Hand === 'string' ? JSON.parse(game.player1Hand) : []);
+    const player2Hand: Card[] = Array.isArray(game.player2Hand) 
+      ? game.player2Hand 
+      : (typeof game.player2Hand === 'string' ? JSON.parse(game.player2Hand) : []);
+      
+    // Reveal face down cards to players (for peek)
+    player1Hand.forEach(card => { if (!card.faceUp) card.faceUp = true; });
+    player2Hand.forEach(card => { if (!card.faceUp) card.faceUp = true; });
     
-    for (const game of expiredGames) {
+    updates.player1Hand = JSON.stringify(player1Hand);
+    updates.player2Hand = JSON.stringify(player2Hand);
+  }
+  
+  await storage.updateGame(gameId, updates);
+}
+
+async function startNextRound(gameId: string, roundWinnerId: string): Promise<void> {
+  const game = await storage.getGame(gameId);
+  if (!game) return;
+  
+  // Check if either player is out of cards
+  const player1Cards: Card[] = Array.isArray(game.player1Cards) 
+    ? game.player1Cards 
+    : (typeof game.player1Cards === 'string' ? JSON.parse(game.player1Cards) : []);
+  const player2Cards: Card[] = Array.isArray(game.player2Cards) 
+    ? game.player2Cards 
+    : (typeof game.player2Cards === 'string' ? JSON.parse(game.player2Cards) : []);
+  
+  if (player1Cards.length === 0 || player2Cards.length === 0) {
+    // Game ends - player with cards wins
+    const finalWinnerId = player1Cards.length > 0 ? game.player1Id : game.player2Id;
+    await storage.updateGame(gameId, {
+      winnerId: finalWinnerId,
+      state: 'finished',
+      gameFinishedAt: new Date(),
+    });
+    
+    await storage.updateUserStats(finalWinnerId!, true, 0);
+    await storage.updateUserStats(finalWinnerId === game.player1Id ? game.player2Id! : game.player1Id!, false, 0);
+    
+    await storage.createChatMessage({
+      gameId,
+      userId: null,
+      message: `Game Over! ${finalWinnerId === game.player1Id ? 'Player 1' : 'Player 2'} wins - opponent ran out of cards!`,
+      isSystemMessage: true,
+    });
+    return;
+  }
+  
+  // Both players still have cards - start next round
+  // Each player draws 2 new cards (1 face-up, 1 face-down)
+  const player1FaceUp = player1Cards.pop()!;
+  const player1FaceDown = player1Cards.pop()!;
+  const player2FaceUp = player2Cards.pop()!;
+  const player2FaceDown = player2Cards.pop()!;
+  
+  player1FaceUp.faceUp = true;
+  player1FaceDown.faceUp = false;
+  player2FaceUp.faceUp = true;
+  player2FaceDown.faceUp = false;
+  
+  const player1Hand = [player1FaceUp, player1FaceDown];
+  const player2Hand = [player2FaceUp, player2FaceDown];
+  
+  // Set new betting deadline (25 seconds)
+  const bettingDeadline = new Date(Date.now() + 25000);
+  
+  await storage.updateGame(gameId, {
+    player1Cards: JSON.stringify(player1Cards),
+    player2Cards: JSON.stringify(player2Cards),
+    player1Hand: JSON.stringify(player1Hand),
+    player2Hand: JSON.stringify(player2Hand),
+    player1InitialCards: JSON.stringify([player1FaceUp, player1FaceDown]),
+    player2InitialCards: JSON.stringify([player2FaceUp, player2FaceDown]),
+    bettingDeadline: bettingDeadline,
+    state: 'betting',
+    player1Bet: 0,
+    player2Bet: 0,
+    player1Folded: false,
+    player2Folded: false,
+    player1Busted: false,
+    player2Busted: false,
+    currentRound: (game.currentRound || 1) + 1,
+  });
+  
+  await storage.createChatMessage({
+    gameId,
+    userId: null,
+    message: `Round ${(game.currentRound || 1) + 1} begins! New cards dealt. Betting phase starts now - 25 seconds!`,
+    isSystemMessage: true,
+  });
+}
+
+async function determineRoundWinner(gameId: string): Promise<void> {
+  const game = await storage.getGame(gameId);
+  if (!game) return;
+  
+  const player1Hand: Card[] = Array.isArray(game.player1Hand) 
+    ? game.player1Hand 
+    : (typeof game.player1Hand === 'string' ? JSON.parse(game.player1Hand) : []);
+  const player2Hand: Card[] = Array.isArray(game.player2Hand) 
+    ? game.player2Hand 
+    : (typeof game.player2Hand === 'string' ? JSON.parse(game.player2Hand) : []);
+  
+  const player1Value = calculateHandValue(player1Hand);
+  const player2Value = calculateHandValue(player2Hand);
+  const player1Busted = player1Value > 21;
+  const player2Busted = player2Value > 21;
+  
+  let winnerId: string | null = null;
+  let message = '';
+  
+  // Determine winner
+  if (player1Busted && player2Busted) {
+    message = 'Both players busted! It\'s a tie.';
+  } else if (player1Busted && !player2Busted) {
+    winnerId = game.player2Id;
+    message = `Player 1 busted with ${player1Value}. Player 2 wins with ${player2Value}!`;
+  } else if (player2Busted && !player1Busted) {
+    winnerId = game.player1Id;
+    message = `Player 2 busted with ${player2Value}. Player 1 wins with ${player1Value}!`;
+  } else if (player1Value === player2Value) {
+    // Tie - start tiebreaker
+    await startTiebreaker(gameId);
+    return;
+  } else if (player1Value > player2Value) {
+    winnerId = game.player1Id;
+    message = `Player 1 wins with ${player1Value} vs Player 2's ${player2Value}!`;
+  } else {
+    winnerId = game.player2Id;
+    message = `Player 2 wins with ${player2Value} vs Player 1's ${player1Value}!`;
+  }
+  
+  if (winnerId) {
+    // Winner gets all cards played this round plus betting pot
+    const totalPot = (game.player1Bet || 0) + (game.player2Bet || 0);
+    
+    // Add pot cards and played cards to winner's pile
+    const winnerCardsData = winnerId === game.player1Id ? game.player1Cards : game.player2Cards;
+    const winnerCards: Card[] = Array.isArray(winnerCardsData) 
+      ? winnerCardsData as Card[]
+      : (typeof winnerCardsData === 'string' ? JSON.parse(winnerCardsData) : []);
+    
+    // Add pot cards
+    for (let i = 0; i < totalPot; i++) {
+      const suits: ('hearts' | 'diamonds' | 'clubs' | 'spades')[] = ['hearts', 'diamonds', 'clubs', 'spades'];
+      const values: ('A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K')[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+      winnerCards.push({
+        suit: suits[Math.floor(Math.random() * suits.length)],
+        value: values[Math.floor(Math.random() * values.length)],
+        faceUp: false
+      });
+    }
+    
+    // Add all played cards to winner's pile
+    winnerCards.push(...player1Hand, ...player2Hand);
+    
+    // Update winner's cards
+    if (winnerId === game.player1Id) {
+      await storage.updateGame(gameId, {
+        player1Cards: JSON.stringify(winnerCards)
+      });
+    } else {
+      await storage.updateGame(gameId, {
+        player2Cards: JSON.stringify(winnerCards)
+      });
+    }
+    
+    await storage.createChatMessage({
+      gameId,
+      userId: null,
+      message: message,
+      isSystemMessage: true,
+    });
+    
+    // Start next round
+    await startNextRound(gameId, winnerId);
+  } else {
+    // Tie case handled separately
+    await storage.createChatMessage({
+      gameId,
+      userId: null,
+      message: message,
+      isSystemMessage: true,
+    });
+  }
+}
+
+async function startTiebreaker(gameId: string): Promise<void> {
+  await storage.updateGame(gameId, {
+    state: 'tiebreaker'
+  });
+  
+  await storage.createChatMessage({
+    gameId,
+    userId: null,
+    message: 'It\'s a tie! Starting tiebreaker round...',
+    isSystemMessage: true,
+  });
+  
+  // Tiebreaker logic would go here - for now, just start next round
+  // In a full implementation, players would draw face-down cards and compare ranks
+  await startNextRound(gameId, null);
+}
+
+async function checkExpiredDeadlines(): Promise<void> {
+  try {
+    // Check expired voting deadlines
+    const expiredVotingGames = await storage.getGamesWithExpiredVoting();
+    
+    for (const game of expiredVotingGames) {
       let player1Vote = {};
       let player2Vote = {};
       
@@ -128,8 +343,39 @@ async function checkExpiredVotingDeadlines(): Promise<void> {
       
       await finalizeGameSettings(game.id, finalPlayer1Vote, finalPlayer2Vote);
     }
+    
+    // Check expired betting deadlines
+    const expiredBettingGames = await storage.getGamesWithExpiredBetting();
+    
+    for (const game of expiredBettingGames) {
+      // Time's up for betting - proceed to hit/stay phase
+      await moveToHitStayPhase(game.id);
+      
+      await storage.createChatMessage({
+        gameId: game.id,
+        userId: null,
+        message: 'Betting time expired! Moving to hit/stay phase.',
+        isSystemMessage: true,
+      });
+    }
+    
+    // Check for games that finished and need auto-leave
+    const finishedGames = await storage.getFinishedGamesForAutoLeave();
+    
+    for (const game of finishedGames) {
+      // Delete game after 5 seconds of being finished (auto-leave)
+      await storage.deleteGame(game.id);
+      
+      await storage.createChatMessage({
+        gameId: game.id,
+        userId: null,
+        message: 'Game ended. Both players have been automatically removed.',
+        isSystemMessage: true,
+      });
+    }
+    
   } catch (error) {
-    console.error("Error checking expired voting deadlines:", error);
+    console.error("Error checking expired deadlines:", error);
   }
 }
 
@@ -150,28 +396,50 @@ async function initializeGame(gameId: string, numDecks: number = 1): Promise<voi
   }
   allCards = shuffleDeck(allCards);
   
-  // Deal initial cards - one face up, one face down for each player
-  const player1Hand = [allCards.pop()!, allCards.pop()!];
-  const player2Hand = [allCards.pop()!, allCards.pop()!];
-  
-  // Set face-up/face-down
-  player1Hand[0].faceUp = true;  // First card face-up
-  player1Hand[1].faceUp = false; // Second card face-down
-  player2Hand[0].faceUp = true;  // First card face-up
-  player2Hand[1].faceUp = false; // Second card face-down
-  
-  // Split remaining cards evenly between players as personal card stacks
+  // Split deck evenly between players as personal card piles
   const halfwayPoint = Math.floor(allCards.length / 2);
   const player1Cards = allCards.slice(0, halfwayPoint);
   const player2Cards = allCards.slice(halfwayPoint);
+  
+  // Each player places one card face-up and one face-down from their pile
+  const player1FaceUp = player1Cards.pop()!;
+  const player1FaceDown = player1Cards.pop()!;
+  const player2FaceUp = player2Cards.pop()!;
+  const player2FaceDown = player2Cards.pop()!;
+  
+  player1FaceUp.faceUp = true;
+  player1FaceDown.faceUp = false;
+  player2FaceUp.faceUp = true;
+  player2FaceDown.faceUp = false;
+  
+  const player1Hand = [player1FaceUp, player1FaceDown];
+  const player2Hand = [player2FaceUp, player2FaceDown];
+  
+  // Set betting deadline (25 seconds)
+  const bettingDeadline = new Date(Date.now() + 25000);
   
   await storage.updateGame(gameId, {
     player1Cards: JSON.stringify(player1Cards),
     player2Cards: JSON.stringify(player2Cards),
     player1Hand: JSON.stringify(player1Hand),
     player2Hand: JSON.stringify(player2Hand),
-    remainingCards: JSON.stringify([]), // No longer needed as each player has their own stack
-    state: 'betting', // Move to betting phase after cards are dealt
+    player1InitialCards: JSON.stringify([player1FaceUp, player1FaceDown]),
+    player2InitialCards: JSON.stringify([player2FaceUp, player2FaceDown]),
+    bettingDeadline: bettingDeadline,
+    state: 'betting',
+    player1Bet: 0,
+    player2Bet: 0,
+    player1Folded: false,
+    player2Folded: false,
+    currentRound: 1,
+  });
+  
+  // Add system message
+  await storage.createChatMessage({
+    gameId,
+    userId: null,
+    message: 'Game started! Each player has drawn 2 cards (1 face-up, 1 face-down). Betting phase begins now - you have 25 seconds!',
+    isSystemMessage: true,
   });
 }
 
@@ -179,8 +447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Start background task to check expired voting deadlines
-  setInterval(checkExpiredVotingDeadlines, 5000); // Check every 5 seconds
+  // Start background task to check expired deadlines
+  setInterval(checkExpiredDeadlines, 5000); // Check every 5 seconds
   
   // Start background task to clean up stale online statuses
   setInterval(cleanupStaleOnlineUsers, 30000); // Check every 30 seconds
@@ -398,12 +666,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Poker-style betting routes
+  // Card-based betting routes for Bloker
   app.post('/api/games/:id/bet', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const gameId = req.params.id;
-      const { action, amount } = req.body; // action: 'raise', 'match', 'fold'
+      const { action, cardCount } = req.body; // action: 'check', 'raise', 'fold', cardCount: number of cards to bet
       
       const game = await storage.getGame(gameId);
       if (!game) {
@@ -421,78 +689,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not a player in this game" });
       }
       
+      // Check if this player has already folded
+      if ((isPlayer1 && game.player1Folded) || (isPlayer2 && game.player2Folded)) {
+        return res.status(400).json({ message: "You have already folded this round" });
+      }
+      
       const updates: any = {};
       
       if (action === 'fold') {
-        // Player folds - other player wins
+        // Player folds - loses their bet for this round but stays in game
+        if (isPlayer1) {
+          updates.player1Folded = true;
+        } else {
+          updates.player2Folded = true;
+        }
+        
+        // Opponent wins the pot for this round
         const winnerId = isPlayer1 ? game.player2Id : game.player1Id;
-        const totalPot = (game.player1Bet || 0) + (game.player2Bet || 0);
+        const loserBet = isPlayer1 ? (game.player1Bet || 0) : (game.player2Bet || 0);
+        const winnerBet = isPlayer1 ? (game.player2Bet || 0) : (game.player1Bet || 0);
+        const totalPot = loserBet + winnerBet;
         
-        updates.winnerId = winnerId;
-        updates.state = 'finished';
-        updates.pot = totalPot;
+        // Winner gets the pot cards added to their pile
+        const winnerCardsData = isPlayer1 ? game.player2Cards : game.player1Cards;
+        const winnerCards: Card[] = Array.isArray(winnerCardsData) 
+          ? winnerCardsData as Card[]
+          : (typeof winnerCardsData === 'string' 
+             ? JSON.parse(winnerCardsData) : []);
         
-        // Update stats
-        await storage.updateUserStats(winnerId!, true, totalPot);
-        await storage.updateUserStats(userId, false, -(isPlayer1 ? (game.player1Bet || 0) : (game.player2Bet || 0)));
+        // Add the pot cards to winner's pile (represented as additional cards)
+        for (let i = 0; i < totalPot; i++) {
+          const suits: ('hearts' | 'diamonds' | 'clubs' | 'spades')[] = ['hearts', 'diamonds', 'clubs', 'spades'];
+          const values: ('A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K')[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+          winnerCards.push({
+            suit: suits[Math.floor(Math.random() * suits.length)],
+            value: values[Math.floor(Math.random() * values.length)],
+            faceUp: false
+          });
+        }
+        
+        if (isPlayer1) {
+          updates.player2Cards = JSON.stringify(winnerCards);
+        } else {
+          updates.player1Cards = JSON.stringify(winnerCards);
+        }
+        
+        // Start next round
+        await startNextRound(gameId, winnerId!);
         
         await storage.createChatMessage({
           gameId,
           userId: null,
-          message: `${isPlayer1 ? 'Player 1' : 'Player 2'} folded. ${winnerId === game.player1Id ? 'Player 1' : 'Player 2'} wins $${totalPot}!`,
+          message: `${isPlayer1 ? 'Player 1' : 'Player 2'} folded and lost ${loserBet} cards. Starting next round...`,
           isSystemMessage: true,
         });
         
-      } else if (action === 'match') {
-        // Match the opponent's bet
+      } else if (action === 'check') {
+        // Check - match opponent's bet or stay at current bet if no raise
         const opponentBet = isPlayer1 ? (game.player2Bet || 0) : (game.player1Bet || 0);
         const currentBet = isPlayer1 ? (game.player1Bet || 0) : (game.player2Bet || 0);
-        const betDifference = opponentBet - currentBet;
         
-        if (betDifference <= 0) {
-          return res.status(400).json({ message: "No bet to match" });
+        if (opponentBet > currentBet) {
+          // Must match the opponent's bet to check
+          const betDifference = opponentBet - currentBet;
+          
+          // Get player's cards
+          const playerCardsData = isPlayer1 ? game.player1Cards : game.player2Cards;
+          const playerCards: Card[] = Array.isArray(playerCardsData) 
+            ? playerCardsData as Card[]
+            : (typeof playerCardsData === 'string' 
+               ? JSON.parse(playerCardsData) : []);
+          
+          if (playerCards.length < betDifference) {
+            return res.status(400).json({ message: "Not enough cards to match the bet" });
+          }
+          
+          // Remove bet cards from player's pile
+          for (let i = 0; i < betDifference; i++) {
+            playerCards.pop();
+          }
+          
+          if (isPlayer1) {
+            updates.player1Bet = opponentBet;
+            updates.player1Cards = JSON.stringify(playerCards);
+          } else {
+            updates.player2Bet = opponentBet;
+            updates.player2Cards = JSON.stringify(playerCards);
+          }
         }
         
-        updates.pot = (game.pot || 0) + betDifference;
-        if (isPlayer1) {
-          updates.player1Bet = opponentBet;
-        } else {
-          updates.player2Bet = opponentBet;
-        }
+        // Check if both players have equal bets (betting is complete)
+        const finalPlayer1Bet = isPlayer1 ? (updates.player1Bet || game.player1Bet || 0) : (game.player1Bet || 0);
+        const finalPlayer2Bet = isPlayer2 ? (updates.player2Bet || game.player2Bet || 0) : (game.player2Bet || 0);
         
-        // Check if betting is complete (both players have equal bets)
-        if ((game.player1Bet || 0) + (isPlayer1 ? betDifference : 0) === (game.player2Bet || 0) + (isPlayer2 ? betDifference : 0)) {
+        if (finalPlayer1Bet === finalPlayer2Bet) {
           updates.state = 'hitting_staying';
           
-          // If allowPeek is enabled, reveal face down cards
+          // If allowPeek is enabled, players can now see their face-down cards
           if (game.allowPeek) {
-            const player1Hand: Card[] = Array.isArray(game.player1Hand) 
-              ? game.player1Hand 
-              : (typeof game.player1Hand === 'string' ? JSON.parse(game.player1Hand) : []);
-            const player2Hand: Card[] = Array.isArray(game.player2Hand) 
-              ? game.player2Hand 
-              : (typeof game.player2Hand === 'string' ? JSON.parse(game.player2Hand) : []);
-              
-            // Reveal face down cards to players
-            player1Hand.forEach(card => { if (!card.faceUp) card.faceUp = true; });
-            player2Hand.forEach(card => { if (!card.faceUp) card.faceUp = true; });
-            
-            updates.player1Hand = player1Hand;
-            updates.player2Hand = player2Hand;
+            await moveToHitStayPhase(gameId);
+            const updatedGame = await storage.updateGame(gameId, updates);
+            return res.json(updatedGame);
           }
         }
         
       } else if (action === 'raise') {
-        // Raise the bet
-        if (!amount || amount <= 0) {
+        // Raise the bet by adding more cards
+        if (!cardCount || cardCount <= 0) {
           return res.status(400).json({ message: "Invalid raise amount" });
         }
         
-        updates.pot = (game.pot || 0) + amount;
+        // Get player's cards
+        const playerCardsData = isPlayer1 ? game.player1Cards : game.player2Cards;
+        const playerCards: Card[] = Array.isArray(playerCardsData) 
+          ? playerCardsData as Card[]
+          : (typeof playerCardsData === 'string' 
+             ? JSON.parse(playerCardsData) : []);
+        
+        if (playerCards.length < cardCount) {
+          return res.status(400).json({ message: "Not enough cards to raise by that amount" });
+        }
+        
+        // Remove bet cards from player's pile
+        for (let i = 0; i < cardCount; i++) {
+          playerCards.pop();
+        }
+        
         if (isPlayer1) {
-          updates.player1Bet = (game.player1Bet || 0) + amount;
+          updates.player1Bet = (game.player1Bet || 0) + cardCount;
+          updates.player1Cards = JSON.stringify(playerCards);
         } else {
-          updates.player2Bet = (game.player2Bet || 0) + amount;
+          updates.player2Bet = (game.player2Bet || 0) + cardCount;
+          updates.player2Cards = JSON.stringify(playerCards);
         }
       }
       
