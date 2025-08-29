@@ -3,13 +3,17 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Trophy, ArrowDown, ArrowUp, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 
 export function ChallengesList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
-  const { data: challenges = [], isLoading } = useQuery({
+  const { data: challenges = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/challenges'],
     refetchInterval: 3000, // Refresh every 3 seconds
   });
@@ -18,14 +22,17 @@ export function ChallengesList() {
     mutationFn: async (challengeId: string) => {
       await apiRequest('POST', `/api/challenges/${challengeId}/accept`, {});
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       toast({
         title: "Challenge Accepted",
         description: "Game is starting...",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/challenges'] });
       queryClient.invalidateQueries({ queryKey: ['/api/games'] });
-      // TODO: Navigate to game
+      // Navigate to the game
+      if (data?.game?.id) {
+        setLocation(`/game/${data.game.id}`);
+      }
     },
     onError: (error) => {
       toast({
@@ -56,8 +63,8 @@ export function ChallengesList() {
     },
   });
 
-  const incomingChallenges = challenges.filter((c: any) => c.status === 'pending' && c.challenged?.id);
-  const sentChallenges = challenges.filter((c: any) => c.status === 'pending' && c.challenger?.id);
+  const incomingChallenges = challenges.filter((c: any) => c.status === 'pending' && c.challengedId === (user as any)?.id);
+  const sentChallenges = challenges.filter((c: any) => c.status === 'pending' && c.challengerId === (user as any)?.id);
 
   return (
     <div className="bg-card backdrop-blur-xl border border-border rounded-lg p-6 card-glow">
