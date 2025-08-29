@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { GameTable } from "@/components/GameTable";
 import { GameChat } from "@/components/GameChat";
+import { GameSettingsVoting } from "@/components/GameSettingsVoting";
 import { Button } from "@/components/ui/button";
 import { Spade, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -15,7 +16,7 @@ export default function Game() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  const { data: game, isLoading: gameLoading, error } = useQuery({
+  const { data: game = {}, isLoading: gameLoading, error } = useQuery<any>({
     queryKey: ['/api/games', gameId],
     refetchInterval: 2000, // Poll every 2 seconds for real-time updates
     enabled: !!gameId && isAuthenticated,
@@ -64,7 +65,7 @@ export default function Game() {
 
   // Check if user is part of this game
   useEffect(() => {
-    if (game && user && game.player1Id !== user.id && game.player2Id !== user.id) {
+    if (game && game.id && user && game.player1Id !== user.id && game.player2Id !== user.id) {
       toast({
         title: "Access Denied",
         description: "You are not a participant in this game.",
@@ -87,7 +88,7 @@ export default function Game() {
     );
   }
 
-  if (!game) {
+  if (!game || !game.id) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -129,21 +130,21 @@ export default function Game() {
             {/* User Profile */}
             <div className="flex items-center space-x-3 bg-card/50 backdrop-blur-sm rounded-lg px-4 py-2 border border-border">
               <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
-                {user?.profileImageUrl ? (
+                {(user as any)?.profileImageUrl ? (
                   <img 
-                    src={user.profileImageUrl} 
-                    alt={user.firstName} 
+                    src={(user as any).profileImageUrl} 
+                    alt={(user as any).firstName} 
                     className="w-full h-full rounded-full object-cover"
                   />
                 ) : (
                   <span className="text-white text-sm font-semibold">
-                    {user?.firstName?.[0] || 'U'}
+                    {(user as any)?.firstName?.[0] || 'U'}
                   </span>
                 )}
               </div>
               <div className="text-sm">
                 <div className="font-semibold" data-testid="user-name">
-                  {user?.firstName || 'Player'}
+                  {(user as any)?.firstName || 'Player'}
                 </div>
                 <div className="text-muted-foreground">
                   Game ID: {gameId?.slice(0, 8)}...
@@ -155,18 +156,23 @@ export default function Game() {
       </header>
 
       <div className="container mx-auto px-6 py-8">
-        <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-120px)]">
-          
-          {/* Main Game Area */}
-          <div className="lg:col-span-2">
-            <GameTable gameId={gameId!} />
-          </div>
+        {game.state === 'setting_up' ? (
+          /* Settings Voting Phase */
+          <GameSettingsVoting game={game} currentUserId={(user as any)?.id} />
+        ) : (
+          <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-120px)]">
+            
+            {/* Main Game Area */}
+            <div className="lg:col-span-2">
+              <GameTable gameId={gameId!} />
+            </div>
 
-          {/* Right Sidebar: Chat */}
-          <div className="lg:col-span-1">
-            <GameChat gameId={gameId!} />
+            {/* Right Sidebar: Chat */}
+            <div className="lg:col-span-1">
+              <GameChat gameId={gameId!} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

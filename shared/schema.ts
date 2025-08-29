@@ -71,6 +71,9 @@ export const games = pgTable("games", {
   pot: integer("pot").default(0),
   numDecks: integer("num_decks").default(1),
   allowPeek: boolean("allow_peek").default(true),
+  player1SettingsVote: jsonb("player1_settings_vote").default('{}'),
+  player2SettingsVote: jsonb("player2_settings_vote").default('{}'),
+  settingsVotingDeadline: timestamp("settings_voting_deadline"),
   player1Cards: jsonb("player1_cards").default('[]'),
   player2Cards: jsonb("player2_cards").default('[]'),
   player1Hand: jsonb("player1_hand").default('[]'),
@@ -182,8 +185,10 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertGameSchema = createInsertSchema(games).pick({
   player1Id: true,
   player2Id: true,
+  state: true,
   numDecks: true,
   allowPeek: true,
+  settingsVotingDeadline: true,
 });
 
 export const insertChallengeSchema = createInsertSchema(challenges).pick({

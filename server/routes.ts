@@ -59,6 +59,63 @@ function calculateHandValue(hand: Card[]): number {
   return value;
 }
 
+async function finalizeGameSettings(gameId: string, player1Vote: any, player2Vote: any): Promise<void> {
+  let finalNumDecks = 1;
+  let finalAllowPeek = true;
+  
+  // If votes match, use the agreed setting
+  if (player1Vote.numDecks === player2Vote.numDecks) {
+    finalNumDecks = player1Vote.numDecks;
+  } else {
+    // If votes don't match, randomly choose one player's vote
+    const randomPlayer = Math.random() < 0.5 ? player1Vote : player2Vote;
+    finalNumDecks = randomPlayer.numDecks;
+  }
+  
+  if (player1Vote.allowPeek === player2Vote.allowPeek) {
+    finalAllowPeek = player1Vote.allowPeek;
+  } else {
+    // If votes don't match, randomly choose one player's vote
+    const randomPlayer = Math.random() < 0.5 ? player1Vote : player2Vote;
+    finalAllowPeek = randomPlayer.allowPeek;
+  }
+  
+  // Update game with final settings and initialize
+  await storage.updateGame(gameId, {
+    numDecks: finalNumDecks,
+    allowPeek: finalAllowPeek,
+  });
+  
+  // Initialize the game with the final settings
+  await initializeGame(gameId, finalNumDecks);
+}
+
+async function checkExpiredVotingDeadlines(): Promise<void> {
+  try {
+    // Get all games in setting_up state with expired voting deadlines
+    const expiredGames = await storage.getGamesWithExpiredVoting();
+    
+    for (const game of expiredGames) {
+      const player1Vote = JSON.parse(game.player1SettingsVote as string || '{}');
+      const player2Vote = JSON.parse(game.player2SettingsVote as string || '{}');
+      
+      // Use available votes or defaults
+      const finalPlayer1Vote = {
+        numDecks: player1Vote.numDecks || 1,
+        allowPeek: player1Vote.allowPeek ?? true
+      };
+      const finalPlayer2Vote = {
+        numDecks: player2Vote.numDecks || 1,
+        allowPeek: player2Vote.allowPeek ?? true
+      };
+      
+      await finalizeGameSettings(game.id, finalPlayer1Vote, finalPlayer2Vote);
+    }
+  } catch (error) {
+    console.error("Error checking expired voting deadlines:", error);
+  }
+}
+
 async function initializeGame(gameId: string, numDecks: number = 1): Promise<void> {
   // Create and shuffle deck(s)
   let allCards: Card[] = [];
@@ -88,6 +145,9 @@ async function initializeGame(gameId: string, numDecks: number = 1): Promise<voi
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Start background task to check expired voting deadlines
+  setInterval(checkExpiredVotingDeadlines, 5000); // Check every 5 seconds
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -168,12 +228,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Challenge not found" });
       }
       
-      // Create game
+      // Create game in setting_up state for voting on settings
+      const settingsDeadline = new Date(Date.now() + 60000); // 1 minute to vote
       const game = await storage.createGame({
         player1Id: challenge.challengerId,
         player2Id: challenge.challengedId,
-        numDecks: (challenge.gameSettings as any)?.numDecks || 1,
-        allowPeek: (challenge.gameSettings as any)?.allowPeek ?? true,
+        state: 'setting_up',
+        settingsVotingDeadline: settingsDeadline,
       });
       
       // Update challenge
@@ -181,9 +242,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'accepted',
         gameId: game.id,
       });
-      
-      // Initialize game
-      await initializeGame(game.id, game.numDecks || 1);
       
       res.json({ challenge, game });
     } catch (error) {
@@ -232,6 +290,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching game:", error);
       res.status(500).json({ message: "Failed to fetch game" });
+    }
+  });
+
+  // Settings voting routes
+  app.post('/api/games/:id/vote-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const gameId = req.params.id;
+      const { numDecks, allowPeek } = req.body;
+      
+      const game = await storage.getGame(gameId);
+      if (!game) {
+        return res.status(404).json({ message: "Game not found" });
+      }
+      
+      if (game.state !== 'setting_up') {
+        return res.status(400).json({ message: "Game is not in settings voting phase" });
+      }
+      
+      const isPlayer1 = game.player1Id === userId;
+      const isPlayer2 = game.player2Id === userId;
+      
+      if (!isPlayer1 && !isPlayer2) {
+        return res.status(403).json({ message: "Not a player in this game" });
+      }
+      
+      const settingsVote = { numDecks, allowPeek, votedAt: new Date() };
+      const updates: any = {};
+      
+      if (isPlayer1) {
+        updates.player1SettingsVote = JSON.stringify(settingsVote);
+      } else {
+        updates.player2SettingsVote = JSON.stringify(settingsVote);
+      }
+      
+      const updatedGame = await storage.updateGame(gameId, updates);
+      
+      // Check if both players have voted
+      const player1Vote = isPlayer1 ? settingsVote : JSON.parse(updatedGame.player1SettingsVote as string || '{}');
+      const player2Vote = isPlayer2 ? settingsVote : JSON.parse(updatedGame.player2SettingsVote as string || '{}');
+      
+      if (player1Vote.numDecks && player2Vote.numDecks) {
+        // Both players have voted, finalize settings
+        await finalizeGameSettings(gameId, player1Vote, player2Vote);
+      }
+      
+      res.json(updatedGame);
+    } catch (error) {
+      console.error("Error voting on settings:", error);
+      res.status(500).json({ message: "Failed to vote on settings" });
     }
   });
 

@@ -14,7 +14,7 @@ import {
   type Card,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, asc, ne } from "drizzle-orm";
+import { eq, and, or, desc, asc, ne, lt } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -235,6 +235,19 @@ export class DatabaseStorage implements IStorage {
       ...row.message,
       user: row.user,
     }));
+  }
+
+  async getGamesWithExpiredVoting(): Promise<Game[]> {
+    const expiredGames = await db
+      .select()
+      .from(games)
+      .where(
+        and(
+          eq(games.state, 'setting_up'),
+          lt(games.settingsVotingDeadline, new Date())
+        )
+      );
+    return expiredGames;
   }
 }
 

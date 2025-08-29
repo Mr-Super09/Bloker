@@ -20,7 +20,8 @@ export function ChallengesList() {
 
   const acceptMutation = useMutation({
     mutationFn: async (challengeId: string) => {
-      await apiRequest('POST', `/api/challenges/${challengeId}/accept`, {});
+      const response = await apiRequest('POST', `/api/challenges/${challengeId}/accept`, {});
+      return await response.json();
     },
     onSuccess: (data: any) => {
       toast({
