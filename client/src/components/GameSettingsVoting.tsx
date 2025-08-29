@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Clock, Settings, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { formatDistanceToNow } from "date-fns";
 
 interface GameSettingsVotingProps {
   game: any;
@@ -19,6 +18,7 @@ export function GameSettingsVoting({ game, currentUserId }: GameSettingsVotingPr
   const [numDecks, setNumDecks] = useState(1);
   const [allowPeek, setAllowPeek] = useState(true);
   const [timeLeft, setTimeLeft] = useState("");
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -61,8 +61,19 @@ export function GameSettingsVoting({ game, currentUserId }: GameSettingsVotingPr
         
         if (diff <= 0) {
           setTimeLeft("Voting expired");
+          setSecondsRemaining(0);
         } else {
-          setTimeLeft(formatDistanceToNow(deadline, { addSuffix: true }));
+          const totalSeconds = Math.floor(diff / 1000);
+          const minutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
+          
+          setSecondsRemaining(totalSeconds);
+          
+          if (minutes > 0) {
+            setTimeLeft(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+          } else {
+            setTimeLeft(`${seconds}s`);
+          }
         }
       };
 
@@ -71,6 +82,14 @@ export function GameSettingsVoting({ game, currentUserId }: GameSettingsVotingPr
       return () => clearInterval(interval);
     }
   }, [game.settingsVotingDeadline]);
+  
+  // End timer early if both players have voted
+  useEffect(() => {
+    if (player1Vote.numDecks && player2Vote.numDecks) {
+      setTimeLeft("Both players voted - finalizing...");
+      setSecondsRemaining(0);
+    }
+  }, [player1Vote.numDecks, player2Vote.numDecks]);
 
   const handleSubmitVote = () => {
     voteSettingsMutation.mutate();
@@ -88,9 +107,14 @@ export function GameSettingsVoting({ game, currentUserId }: GameSettingsVotingPr
             <p className="text-muted-foreground">
               Both players need to agree on game settings before starting
             </p>
-            <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
-              <Clock size={16} />
-              <span>Voting deadline: {timeLeft}</span>
+            <div className="flex items-center justify-center space-x-2 text-sm">
+              <Clock size={16} className={secondsRemaining <= 10 && secondsRemaining > 0 ? "text-red-500" : "text-muted-foreground"} />
+              <span className={secondsRemaining <= 10 && secondsRemaining > 0 ? "text-red-500 font-bold" : "text-muted-foreground"}>
+                {player1Vote.numDecks && player2Vote.numDecks ? 
+                  "Both players voted - finalizing..." : 
+                  `Time remaining: ${timeLeft}`
+                }
+              </span>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
